@@ -10,7 +10,7 @@ import { MoodboardMikroRepository } from '../../infrastructure/persistence/moodb
 import { MOODBOARD_REPOSITORY } from '../../domain/moodboard/repository/moodboard.repository.interface.js';
 import { PromptMikroRepository, PromptTemplateMikroRepository } from '../../infrastructure/persistence/prompt-mikro.repository.js';
 import { PROMPT_REPOSITORY, PROMPT_TEMPLATE_REPOSITORY } from '../../domain/prompt/repository/prompt.repository.interface.js';
-import { OpenAIClient } from '../../infrastructure/external/openai.client.js';
+import { GeminiClient } from '../../infrastructure/external/gemini.client.js';
 import { RenderingEntity } from '../../domain/rendering/model/rendering.entity.js';
 import { SketchEntity } from '../../domain/sketch/model/sketch.entity.js';
 import { MoodboardEntity } from '../../domain/moodboard/model/moodboard.entity.js';
@@ -21,7 +21,7 @@ import { PromptEntity, PromptTemplateEntity } from '../../domain/prompt/model/pr
   controllers: [RenderingController],
   providers: [
     RenderingApplicationService,
-    OpenAIClient,
+    GeminiClient,
     { provide: RENDERING_REPOSITORY, useClass: RenderingMikroRepository },
     { provide: SKETCH_REPOSITORY, useClass: SketchMikroRepository },
     { provide: MOODBOARD_REPOSITORY, useClass: MoodboardMikroRepository },

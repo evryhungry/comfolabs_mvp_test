@@ -50,6 +50,8 @@ Non-negotiable priorities:
 
 
 Output requirement (image only):
+- Resolution: landscape orientation, minimum 1024 × 724 px.
+- Aspect ratio: approximately 1.414:1 (A4 landscape proportion).
 Produce exactly one final image: a clean multi-view render sheet containing these views of the same product:
 • Front
 • Left
@@ -68,13 +70,14 @@ Render quality requirements:
 
 
 Multi-view sheet layout rules:
-• Present the views on a single board-like canvas with a tidy grid layout and consistent spacing.
+- Use a landscape-oriented A4 canvas (297 × 210 mm) as the base layout.
+- Present the views on a single board-like canvas with a tidy grid layout and consistent spacing.
 Suggested grid:
 Row 1: Front | Left | Right
 Row 2: Back | Perspective (45°) | (Top if included, otherwise empty/spacing)
 If Top and Bottom are included, add a third row or use remaining slots while keeping balance.
-• Add small, clean labels under each view: "Front", "Left", "Right", "Back", "45° Perspective", "Top", "Bottom".
-• Keep typography minimal and unobtrusive; ensure labels are crisp and readable.
+- Add small, clean labels under each view: "Front", "Left", "Right", "Back", "45° Perspective", "Top", "Bottom".
+- Keep typography minimal and unobtrusive; ensure labels are crisp and readable.
 
 Handling ambiguity:
 * Do not ask follow-up questions. Proceed with best professional judgment.

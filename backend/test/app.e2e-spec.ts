@@ -9,7 +9,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/infrastructure/persistence/prisma.service';
-import { OpenAIClient } from '../src/infrastructure/external/openai.client';
+import { GeminiClient } from '../src/infrastructure/external/gemini.client';
 
 const mockPrismaService = {
   onModuleInit: jest.fn(),
@@ -62,7 +62,7 @@ const mockPrismaService = {
   },
 };
 
-const mockOpenAIClient = {
+const mockGeminiClient = {
   generateImage: jest.fn(),
 };
 
@@ -75,8 +75,8 @@ describe('API Endpoints (e2e)', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(mockPrismaService)
-      .overrideProvider(OpenAIClient)
-      .useValue(mockOpenAIClient)
+      .overrideProvider(GeminiClient)
+      .useValue(mockGeminiClient)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -451,7 +451,7 @@ describe('API Endpoints (e2e)', () => {
           status: 'COMPLETED',
           resultUrl: 'https://example.com/result.png',
         });
-        mockOpenAIClient.generateImage.mockResolvedValue({
+        mockGeminiClient.generateImage.mockResolvedValue({
           resultUrl: 'https://example.com/result.png',
           textResponse: 'Generated',
           metadata: {

@@ -5,7 +5,7 @@ import { RENDERING_REPOSITORY } from '../../../domain/rendering/repository/rende
 import { SKETCH_REPOSITORY } from '../../../domain/sketch/repository/sketch.repository.interface.js';
 import { MOODBOARD_REPOSITORY } from '../../../domain/moodboard/repository/moodboard.repository.interface.js';
 import { PROMPT_REPOSITORY, PROMPT_TEMPLATE_REPOSITORY } from '../../../domain/prompt/repository/prompt.repository.interface.js';
-import { OpenAIClient } from '../../../infrastructure/external/openai.client.js';
+import { GeminiClient } from '../../../infrastructure/external/gemini.client.js';
 import { RenderingStatus } from '../../../domain/rendering/model/rendering.entity.js';
 
 const mockRenderingRepo = {
@@ -45,7 +45,7 @@ const mockTemplateRepo = {
   update: jest.fn(),
 };
 
-const mockOpenAIClient = {
+const mockGeminiClient = {
   generateImage: jest.fn(),
 };
 
@@ -62,7 +62,7 @@ describe('RenderingApplicationService', () => {
         { provide: MOODBOARD_REPOSITORY, useValue: mockMoodboardRepo },
         { provide: PROMPT_REPOSITORY, useValue: mockPromptRepo },
         { provide: PROMPT_TEMPLATE_REPOSITORY, useValue: mockTemplateRepo },
-        { provide: OpenAIClient, useValue: mockOpenAIClient },
+        { provide: GeminiClient, useValue: mockGeminiClient },
       ],
     }).compile();
 
@@ -137,11 +137,11 @@ describe('RenderingApplicationService', () => {
         id: 'r1',
         status: RenderingStatus.COMPLETED,
       });
-      mockOpenAIClient.generateImage.mockResolvedValue({
+      mockGeminiClient.generateImage.mockResolvedValue({
         resultUrl: 'https://example.com/result.png',
         textResponse: 'Rendered successfully',
         metadata: {
-          model: 'gpt-4o',
+          model: 'gemini-2.5-flash',
           promptTokens: 1520,
           completionTokens: 800,
           totalTokens: 2320,
@@ -156,7 +156,7 @@ describe('RenderingApplicationService', () => {
       expect(result.renderedImage).toBe('https://example.com/result.png');
       expect(result.views).toEqual(['https://example.com/result.png']);
       expect(result.promptUsed).toBeDefined();
-      expect(result.metadata.model).toBe('gpt-4o');
+      expect(result.metadata.model).toBe('gemini-2.5-flash');
       expect(result.metadata.totalTokens).toBe(2320);
 
       // Verify pipeline steps
@@ -164,7 +164,7 @@ describe('RenderingApplicationService', () => {
       expect(mockMoodboardRepo.findByProjectId).toHaveBeenCalledWith('p1');
       expect(mockPromptRepo.create).toHaveBeenCalledTimes(1);
       expect(mockRenderingRepo.create).toHaveBeenCalledTimes(1);
-      expect(mockOpenAIClient.generateImage).toHaveBeenCalledTimes(1);
+      expect(mockGeminiClient.generateImage).toHaveBeenCalledTimes(1);
 
       // Verify status transitions: PENDING → PROCESSING → COMPLETED
       expect(mockRenderingRepo.update).toHaveBeenCalledWith('r1', {
@@ -192,10 +192,10 @@ describe('RenderingApplicationService', () => {
       mockPromptRepo.create.mockResolvedValue({ id: 'pr1' });
       mockRenderingRepo.create.mockResolvedValue({ id: 'r1', status: RenderingStatus.PENDING });
       mockRenderingRepo.update.mockResolvedValue({ id: 'r1', status: RenderingStatus.COMPLETED });
-      mockOpenAIClient.generateImage.mockResolvedValue({
+      mockGeminiClient.generateImage.mockResolvedValue({
         resultUrl: null,
         textResponse: 'No image',
-        metadata: { model: 'gpt-4o', promptTokens: 0, completionTokens: 0, totalTokens: 0, createdAt: '' },
+        metadata: { model: 'gemini-2.5-flash', promptTokens: 0, completionTokens: 0, totalTokens: 0, createdAt: '' },
       });
 
       const result = await service.executeRendering({
@@ -220,7 +220,7 @@ describe('RenderingApplicationService', () => {
       mockPromptRepo.create.mockResolvedValue({ id: 'pr1' });
       mockRenderingRepo.create.mockResolvedValue({ id: 'r1', status: RenderingStatus.PENDING });
       mockRenderingRepo.update.mockResolvedValue({ id: 'r1' });
-      mockOpenAIClient.generateImage.mockRejectedValue(new Error('API quota exceeded'));
+      mockGeminiClient.generateImage.mockRejectedValue(new Error('API quota exceeded'));
 
       await expect(service.executeRendering(dto)).rejects.toThrow('API quota exceeded');
 

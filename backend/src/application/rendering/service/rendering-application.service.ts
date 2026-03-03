@@ -9,7 +9,7 @@ import type { IPromptRepository, IPromptTemplateRepository } from '../../../doma
 import { PROMPT_REPOSITORY, PROMPT_TEMPLATE_REPOSITORY } from '../../../domain/prompt/repository/prompt.repository.interface.js';
 import { RenderingEntity, RenderingStatus } from '../../../domain/rendering/model/rendering.entity.js';
 import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from '../../../domain/prompt/service/prompt-domain.service.js';
-import { OpenAIClient } from '../../../infrastructure/external/openai.client.js';
+import { GeminiClient } from '../../../infrastructure/external/gemini.client.js';
 import type { RenderingResponseDto } from '../dto/create-rendering.dto.js';
 import { ExecuteRenderingDto } from '../dto/create-rendering.dto.js';
 import * as fs from 'fs';
@@ -31,7 +31,7 @@ export class RenderingApplicationService {
     private readonly promptRepository: IPromptRepository,
     @Inject(PROMPT_TEMPLATE_REPOSITORY)
     private readonly templateRepository: IPromptTemplateRepository,
-    private readonly openaiClient: OpenAIClient,
+    private readonly geminiClient: GeminiClient,
   ) {}
 
   async findByProjectId(projectId: string): Promise<RenderingEntity[]> {
@@ -50,7 +50,7 @@ export class RenderingApplicationService {
    * 2. Resolve prompt template (or use default v1.0)
    * 3. Build final prompt
    * 4. Convert images to base64
-   * 5. Call OpenAI API
+   * 5. Call Gemini API
    * 6. Save results
    */
   async executeRendering(dto: ExecuteRenderingDto): Promise<RenderingResponseDto> {
@@ -127,9 +127,9 @@ export class RenderingApplicationService {
       status: RenderingStatus.PROCESSING,
     });
 
-    // 9. Call OpenAI (2-step pipeline: Vision → Image Generation)
+    // 9. Call Gemini (2-step pipeline: Vision → Image Generation)
     try {
-      const result = await this.openaiClient.generateImage(
+      const result = await this.geminiClient.generateImage(
         this.promptDomainService.buildSystemPromptOnly(systemPrompt),
         userPrompt,
         sketchBase64,
