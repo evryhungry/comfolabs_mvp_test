@@ -35,7 +35,7 @@ export interface CreateRenderingDto {
 
 export interface ExecuteRenderingRequest {
   projectId: string
-  userPrompt: string
+  userPrompt?: string
   sketchId?: string
   moodboardImageIndex?: number
   promptTemplateId?: string

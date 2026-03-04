@@ -69,7 +69,7 @@ async function handleExecuteRendering(payload: { templateId?: string; userInput:
   try {
     await executeRendering({
       projectId,
-      userPrompt: payload.userInput,
+      userPrompt: payload.userInput || undefined,
       sketchId: selectedSketchId.value ?? undefined,
       moodboardImageIndex: selectedMoodboardIndex.value ?? undefined,
       promptTemplateId: payload.templateId,
