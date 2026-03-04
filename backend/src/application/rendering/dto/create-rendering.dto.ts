@@ -15,9 +15,9 @@ export class ExecuteRenderingDto {
   @IsNotEmpty()
   projectId: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  userPrompt: string;
+  userPrompt?: string;
 
   @IsOptional()
   @IsString()

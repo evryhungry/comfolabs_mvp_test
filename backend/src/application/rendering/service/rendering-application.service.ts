@@ -92,13 +92,13 @@ export class RenderingApplicationService {
     }
 
     // 4. Build final prompt
-    const finalPrompt = this.promptDomainService.buildFinalPrompt(systemPrompt, userPrompt);
+    const finalPrompt = this.promptDomainService.buildFinalPrompt(systemPrompt, userPrompt || '');
 
     // 5. Save prompt record
     const promptRecord = await this.promptRepository.create({
       projectId,
       templateId: promptTemplateId || null,
-      userInput: userPrompt,
+      userInput: userPrompt || '',
       finalPrompt,
     });
 
@@ -131,7 +131,7 @@ export class RenderingApplicationService {
     try {
       const result = await this.geminiClient.generateImage(
         this.promptDomainService.buildSystemPromptOnly(systemPrompt),
-        userPrompt,
+        userPrompt || '',
         sketchBase64,
         moodboardBase64,
       );
