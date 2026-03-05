@@ -11,6 +11,24 @@ dist-ssr
 .env.production.local
 
 .vscode
+.idea
+.DS_Store
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.zip
+*.tar.gz
+*.7z
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
 *.zip
 
-.DS_Store

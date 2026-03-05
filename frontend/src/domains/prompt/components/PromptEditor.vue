@@ -15,7 +15,6 @@ const selectedTemplateId = ref<string>('')
 const userInput = ref('')
 
 function handleSubmit() {
-  if (!userInput.value.trim()) return
   emit('submit', {
     templateId: selectedTemplateId.value || undefined,
     userInput: userInput.value,
@@ -64,7 +63,7 @@ function handleSubmit() {
     <BaseButton
       label="Generate Rendering"
       size="lg"
-      :disabled="!userInput.trim()"
+      :disabled="false"
       @click="handleSubmit"
     />
   </div>
