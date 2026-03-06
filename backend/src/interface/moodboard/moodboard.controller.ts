@@ -59,7 +59,7 @@ export class MoodboardController {
         }
         cb(null, true);
       },
-      limits: { fileSize: 20 * 1024 * 1024 },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     }),
   )
   async upload(

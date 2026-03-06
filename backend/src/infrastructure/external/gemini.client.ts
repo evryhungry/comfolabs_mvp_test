@@ -110,11 +110,11 @@ User's design intent for context: ${userPrompt || 'No specific requirements prov
       sketchAnalysis = '';
     }
 
+    const sketch = this.parseBase64Image(sketchImageBase64);
+    const moodboard = this.parseBase64Image(moodboardImageBase64);
+
     for (let attempt = 1; attempt <= geminiConfig.maxRetries; attempt++) {
       try {
-        const sketch = this.parseBase64Image(sketchImageBase64);
-        const moodboard = this.parseBase64Image(moodboardImageBase64);
-
         // Build enhanced prompt that includes the sketch geometry analysis
         const enhancedUserPrompt = `
 [CRITICAL: SKETCH GEOMETRY ANALYSIS]
@@ -216,9 +216,13 @@ ${sketchAnalysis}
     mimeType: string;
   } {
     if (dataUrl.startsWith('data:')) {
-      const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
-      if (match) {
-        return { mimeType: match[1], data: match[2] };
+      const semicolonIdx = dataUrl.indexOf(';');
+      const commaIdx = dataUrl.indexOf(',');
+      if (semicolonIdx > 5 && commaIdx > semicolonIdx) {
+        return {
+          mimeType: dataUrl.substring(5, semicolonIdx),
+          data: dataUrl.substring(commaIdx + 1),
+        };
       }
     }
     // If it's already raw base64 or a URL, return as-is
