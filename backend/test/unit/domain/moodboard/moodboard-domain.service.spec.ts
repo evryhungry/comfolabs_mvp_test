@@ -1,4 +1,4 @@
-import { MoodboardDomainService } from '../../../../src/domain/moodboard/service/moodboard-domain.service';
+import { MoodboardDomainService } from '../../../../src/domain/moodboard/service/moodboard-domain.service.js';
 
 describe('MoodboardDomainService', () => {
   let service: MoodboardDomainService;

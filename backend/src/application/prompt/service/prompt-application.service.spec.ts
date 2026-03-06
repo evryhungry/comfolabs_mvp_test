@@ -5,18 +5,18 @@ import { PromptApplicationService } from './prompt-application.service.js';
 import { PROMPT_REPOSITORY, PROMPT_TEMPLATE_REPOSITORY } from '../../../domain/prompt/repository/prompt.repository.interface.js';
 
 const mockPromptRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  delete: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 const mockTemplateRepo = {
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  findActive: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
+  findAll: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  findActive: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
 };
 
 describe('PromptApplicationService', () => {

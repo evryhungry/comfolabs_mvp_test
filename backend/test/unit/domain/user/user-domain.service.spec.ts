@@ -1,4 +1,4 @@
-import { UserDomainService } from '../../../../src/domain/user/service/user-domain.service';
+import { UserDomainService } from '../../../../src/domain/user/service/user-domain.service.js';
 
 describe('UserDomainService', () => {
   let service: UserDomainService;

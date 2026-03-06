@@ -1,5 +1,5 @@
-import { RenderingDomainService } from '../../../../src/domain/rendering/service/rendering-domain.service';
-import { RenderingEntity, RenderingStatus } from '../../../../src/domain/rendering/model/rendering.entity';
+import { RenderingDomainService } from '../../../../src/domain/rendering/service/rendering-domain.service.js';
+import { RenderingEntity, RenderingStatus } from '../../../../src/domain/rendering/model/rendering.entity.js';
 
 describe('RenderingDomainService', () => {
   let service: RenderingDomainService;

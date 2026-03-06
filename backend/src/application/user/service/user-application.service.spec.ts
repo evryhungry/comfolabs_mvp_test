@@ -5,12 +5,12 @@ import { UserApplicationService } from './user-application.service.js';
 import { USER_REPOSITORY } from '../../../domain/user/repository/user.repository.interface.js';
 
 const mockUserRepository = {
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  findByEmail: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
+  findAll: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  findByEmail: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 describe('UserApplicationService', () => {

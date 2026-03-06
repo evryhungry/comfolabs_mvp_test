@@ -5,12 +5,12 @@ import { ProjectApplicationService } from './project-application.service.js';
 import { PROJECT_REPOSITORY } from '../../../domain/project/repository/project.repository.interface.js';
 
 const mockProjectRepository = {
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  findByUserId: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
+  findAll: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  findByUserId: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 describe('ProjectApplicationService', () => {

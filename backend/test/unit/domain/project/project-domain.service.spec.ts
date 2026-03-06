@@ -1,5 +1,5 @@
-import { ProjectDomainService } from '../../../../src/domain/project/service/project-domain.service';
-import { ProjectEntity } from '../../../../src/domain/project/model/project.entity';
+import { ProjectDomainService } from '../../../../src/domain/project/service/project-domain.service.js';
+import { ProjectEntity } from '../../../../src/domain/project/model/project.entity.js';
 
 describe('ProjectDomainService', () => {
   let service: ProjectDomainService;

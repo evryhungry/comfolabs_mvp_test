@@ -5,11 +5,11 @@ import { MoodboardApplicationService } from './moodboard-application.service.js'
 import { MOODBOARD_REPOSITORY } from '../../../domain/moodboard/repository/moodboard.repository.interface.js';
 
 const mockMoodboardRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 describe('MoodboardApplicationService', () => {

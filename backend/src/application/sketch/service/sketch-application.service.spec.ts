@@ -5,10 +5,10 @@ import { SketchApplicationService } from './sketch-application.service.js';
 import { SKETCH_REPOSITORY } from '../../../domain/sketch/repository/sketch.repository.interface.js';
 
 const mockSketchRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  delete: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 describe('SketchApplicationService', () => {

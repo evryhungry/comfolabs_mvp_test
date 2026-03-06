@@ -10,45 +10,45 @@ import { GeminiClient } from '../../../infrastructure/external/gemini.client.js'
 import { RenderingStatus } from '../../../domain/rendering/model/rendering.entity.js';
 
 const mockRenderingRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
 };
 
 const mockSketchRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  delete: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 const mockMoodboardRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 const mockPromptRepo = {
-  findByProjectId: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  delete: jest.fn(),
+  findByProjectId: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  create: jest.fn<any>(),
+  delete: jest.fn<any>(),
 };
 
 const mockTemplateRepo = {
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  findActive: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
+  findAll: jest.fn<any>(),
+  findById: jest.fn<any>(),
+  findActive: jest.fn<any>(),
+  create: jest.fn<any>(),
+  update: jest.fn<any>(),
 };
 
 const mockGeminiClient = {
-  generateImage: jest.fn(),
-  getQueueStatus: jest.fn().mockReturnValue({
+  generateImage: jest.fn<any>(),
+  getQueueStatus: jest.fn<any>().mockReturnValue({
     running: 0,
     waiting: 0,
     maxConcurrent: 3,

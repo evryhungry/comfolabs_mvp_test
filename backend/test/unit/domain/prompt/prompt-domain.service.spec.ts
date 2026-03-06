@@ -1,4 +1,4 @@
-import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from '../../../../src/domain/prompt/service/prompt-domain.service';
+import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from '../../../../src/domain/prompt/service/prompt-domain.service.js';
 
 describe('PromptDomainService', () => {
   let service: PromptDomainService;

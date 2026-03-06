@@ -2,10 +2,10 @@ import { jest } from '@jest/globals';
 import { GeminiClient } from './gemini.client.js';
 
 // Mock the @google/genai SDK
-const mockGenerateContent = jest.fn();
+const mockGenerateContent = jest.fn<any>();
 
 jest.mock('@google/genai', () => ({
-  GoogleGenAI: jest.fn().mockImplementation(() => ({
+  GoogleGenAI: jest.fn<any>().mockImplementation(() => ({
     models: {
       generateContent: mockGenerateContent,
     },

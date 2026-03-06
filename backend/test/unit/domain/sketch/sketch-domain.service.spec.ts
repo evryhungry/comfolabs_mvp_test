@@ -1,4 +1,4 @@
-import { SketchDomainService } from '../../../../src/domain/sketch/service/sketch-domain.service';
+import { SketchDomainService } from '../../../../src/domain/sketch/service/sketch-domain.service.js';
 
 describe('SketchDomainService', () => {
   let service: SketchDomainService;
