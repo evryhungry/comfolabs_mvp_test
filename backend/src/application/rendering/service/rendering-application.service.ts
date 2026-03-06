@@ -12,7 +12,7 @@ import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from '../../../domain/prom
 import { GeminiClient } from '../../../infrastructure/external/gemini.client.js';
 import type { RenderingResponseDto } from '../dto/create-rendering.dto.js';
 import { ExecuteRenderingDto } from '../dto/create-rendering.dto.js';
-import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 
 @Injectable()
@@ -176,15 +176,13 @@ export class RenderingApplicationService {
     renderingId: string,
   ): Promise<string> {
     const renderingsDir = path.join(process.cwd(), 'uploads', 'renderings');
-    if (!fs.existsSync(renderingsDir)) {
-      fs.mkdirSync(renderingsDir, { recursive: true });
-    }
+    await fsPromises.mkdir(renderingsDir, { recursive: true });
 
     const filename = `${renderingId}.png`;
     const filePath = path.join(renderingsDir, filename);
 
     const buffer = Buffer.from(base64Data, 'base64');
-    fs.writeFileSync(filePath, buffer);
+    await fsPromises.writeFile(filePath, buffer);
 
     this.logger.log(`Saved rendered image: ${filePath}`);
     return `/uploads/renderings/${filename}`;
@@ -206,7 +204,7 @@ export class RenderingApplicationService {
         ? imageUrl
         : path.resolve(process.cwd(), imageUrl);
 
-    const fileBuffer = fs.readFileSync(absolutePath);
+    const fileBuffer = await fsPromises.readFile(absolutePath);
     const ext = path.extname(absolutePath).toLowerCase().slice(1);
     const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
     return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
