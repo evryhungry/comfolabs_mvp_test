@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import mikroOrmConfig from './infrastructure/config/mikro-orm.config.js';
 import { UserModule } from './interface/user/user.module.js';
@@ -11,12 +13,19 @@ import { RenderingModule } from './interface/rendering/rendering.module.js';
 @Module({
   imports: [
     MikroOrmModule.forRoot(mikroOrmConfig),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 60,
+    }]),
     UserModule,
     ProjectModule,
     SketchModule,
     MoodboardModule,
     PromptModule,
     RenderingModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

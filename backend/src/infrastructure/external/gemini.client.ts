@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { geminiConfig } from '../config/gemini.config.js';
 
@@ -20,8 +20,49 @@ export class GeminiClient {
   private readonly logger = new Logger(GeminiClient.name);
   private readonly client: GoogleGenAI;
 
+  // Semaphore for concurrency control
+  private readonly MAX_CONCURRENT = parseInt(process.env.GEMINI_MAX_CONCURRENT || '3', 10);
+  private readonly MAX_QUEUE_SIZE = parseInt(process.env.GEMINI_MAX_QUEUE_SIZE || '50', 10);
+  private runningCount = 0;
+  private readonly waitQueue: Array<() => void> = [];
+
   constructor() {
     this.client = new GoogleGenAI({ apiKey: geminiConfig.apiKey });
+  }
+
+  getQueueStatus() {
+    return {
+      running: this.runningCount,
+      waiting: this.waitQueue.length,
+      maxConcurrent: this.MAX_CONCURRENT,
+      maxQueueSize: this.MAX_QUEUE_SIZE,
+    };
+  }
+
+  private async acquireSlot(): Promise<void> {
+    if (this.runningCount < this.MAX_CONCURRENT) {
+      this.runningCount++;
+      return;
+    }
+    if (this.waitQueue.length >= this.MAX_QUEUE_SIZE) {
+      throw new ServiceUnavailableException(
+        `Rendering queue is full (${this.MAX_QUEUE_SIZE} waiting). Please try again later.`,
+      );
+    }
+    return new Promise<void>((resolve) => {
+      this.waitQueue.push(() => {
+        this.runningCount++;
+        resolve();
+      });
+    });
+  }
+
+  private releaseSlot(): void {
+    this.runningCount--;
+    if (this.waitQueue.length > 0) {
+      const next = this.waitQueue.shift()!;
+      next();
+    }
   }
 
   /**
@@ -92,8 +133,23 @@ User's design intent for context: ${userPrompt || 'No specific requirements prov
   /**
    * Step 2: Image generation model creates the render using sketch analysis + reference images.
    * Layout is controlled entirely by the system prompt.
+   * Wrapped with semaphore for concurrency control.
    */
   async generateImage(
+    systemPrompt: string,
+    userPrompt: string,
+    sketchImageBase64: string,
+    moodboardImageBase64: string,
+  ): Promise<GeminiRenderingResult> {
+    await this.acquireSlot();
+    try {
+      return await this._generateImageInternal(systemPrompt, userPrompt, sketchImageBase64, moodboardImageBase64);
+    } finally {
+      this.releaseSlot();
+    }
+  }
+
+  private async _generateImageInternal(
     systemPrompt: string,
     userPrompt: string,
     sketchImageBase64: string,
