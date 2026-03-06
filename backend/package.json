@@ -18,7 +18,14 @@
     "test:watch": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:cov": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:debug": "DOTENV_CONFIG_PATH=.env.test node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "DOTENV_CONFIG_PATH=.env.test jest --config ./test/jest-e2e.json"
+    "test:e2e": "DOTENV_CONFIG_PATH=.env.test jest --config ./test/jest-e2e.json",
+    "migration:create": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm migration:create",
+    "migration:up": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm migration:up",
+    "migration:down": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm migration:down",
+    "migration:list": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm migration:list",
+    "migration:fresh": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm migration:fresh",
+    "schema:update": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm schema:update --run",
+    "schema:drop": "npm run build && DOTENV_CONFIG_PATH=.env.local npx mikro-orm schema:drop --run"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

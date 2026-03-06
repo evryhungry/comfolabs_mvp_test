@@ -1,4 +1,5 @@
 import { defineConfig } from '@mikro-orm/mysql';
+import { Migrator } from '@mikro-orm/migrations';
 import { UserEntity } from '../../domain/user/model/user.entity.js';
 import { ProjectEntity } from '../../domain/project/model/project.entity.js';
 import { SketchEntity } from '../../domain/sketch/model/sketch.entity.js';
@@ -22,6 +23,22 @@ export default defineConfig({
     PromptTemplateEntity,
     RenderingEntity,
   ],
+  pool: {
+    min: 2,
+    max: 20,
+    acquireTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000,
+  },
   debug: process.env.NODE_ENV !== 'production',
   dynamicImportProvider: (id) => import(id),
+  extensions: [Migrator],
+  migrations: {
+    path: './migrations/db',
+    emit: 'js',
+    transactional: true,
+    allOrNothing: true,
+  },
+  schemaGenerator: {
+    disableForeignKeys: false,
+  },
 });
