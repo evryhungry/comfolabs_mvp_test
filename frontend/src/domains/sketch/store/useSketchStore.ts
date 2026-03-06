@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Sketch, CreateSketchDto } from '../model/Sketch'
 import { sketchApi } from '../service/sketchApi'
+import { ApiError } from '../../../shared/api'
 
 export const useSketchStore = defineStore('sketch', () => {
   const sketches = ref<Sketch[]>([])
@@ -14,7 +15,7 @@ export const useSketchStore = defineStore('sketch', () => {
     try {
       sketches.value = await sketchApi.getByProjectId(projectId)
     } catch (e) {
-      error.value = 'Failed to fetch sketches'
+      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch sketches'
     } finally {
       loading.value = false
     }
