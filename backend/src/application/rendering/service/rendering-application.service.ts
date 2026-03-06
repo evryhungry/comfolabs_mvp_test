@@ -8,9 +8,11 @@ import { MOODBOARD_REPOSITORY } from '../../../domain/moodboard/repository/moodb
 import type { IPromptRepository, IPromptTemplateRepository } from '../../../domain/prompt/repository/prompt.repository.interface.js';
 import { PROMPT_REPOSITORY, PROMPT_TEMPLATE_REPOSITORY } from '../../../domain/prompt/repository/prompt.repository.interface.js';
 import { RenderingEntity, RenderingStatus } from '../../../domain/rendering/model/rendering.entity.js';
+import type { SketchEntity } from '../../../domain/sketch/model/sketch.entity.js';
+import type { MoodboardEntity } from '../../../domain/moodboard/model/moodboard.entity.js';
 import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from '../../../domain/prompt/service/prompt-domain.service.js';
 import { GeminiClient } from '../../../infrastructure/external/gemini.client.js';
-import type { RenderingResponseDto } from '../dto/create-rendering.dto.js';
+import type { EnqueueRenderingResponseDto, RenderingStatusDto, RenderingResponseDto } from '../dto/create-rendering.dto.js';
 import { ExecuteRenderingDto } from '../dto/create-rendering.dto.js';
 import { promises as fsPromises } from 'fs';
 import * as path from 'path';
@@ -45,56 +47,30 @@ export class RenderingApplicationService {
   }
 
   /**
-   * Full rendering pipeline:
-   * 1. Load project sketches + moodboard
-   * 2. Resolve prompt template (or use default v1.0)
-   * 3. Build final prompt
-   * 4. Convert images to base64
-   * 5. Call Gemini API
-   * 6. Save results
+   * Enqueue rendering: validate inputs, create DB records, start background processing.
+   * Returns immediately with renderingId (HTTP 202).
    */
-  async executeRendering(dto: ExecuteRenderingDto): Promise<RenderingResponseDto> {
+  async enqueueRendering(dto: ExecuteRenderingDto): Promise<EnqueueRenderingResponseDto> {
     const { projectId, userPrompt, sketchId, moodboardImageIndex, promptTemplateId } = dto;
 
-    // 1. Load sketch (specific or first available)
-    let selectedSketch;
-    if (sketchId) {
-      selectedSketch = await this.sketchRepository.findById(sketchId);
-      if (!selectedSketch) {
-        throw new BadRequestException(`Sketch ${sketchId} not found`);
-      }
-    } else {
-      const sketches = await this.sketchRepository.findByProjectId(projectId);
-      if (sketches.length === 0) {
-        throw new BadRequestException('Project has no sketches. Upload at least one sketch.');
-      }
-      selectedSketch = sketches[0];
+    // Duplicate execution guard
+    const existingRenderings = await this.renderingRepository.findByProjectId(projectId);
+    const inProgress = existingRenderings.find(
+      r => r.status === RenderingStatus.PENDING || r.status === RenderingStatus.PROCESSING,
+    );
+    if (inProgress) {
+      throw new BadRequestException(
+        `Rendering ${inProgress.id} is already in progress for this project.`,
+      );
     }
 
-    // 2. Load moodboard
-    const moodboard = await this.moodboardRepository.findByProjectId(projectId);
-    if (!moodboard) {
-      throw new BadRequestException('Project has no moodboard. Upload a moodboard first.');
-    }
+    // Validate inputs
+    const selectedSketch = await this.resolveSketch(projectId, sketchId);
+    const moodboard = await this.resolveMoodboard(projectId);
+    const systemPrompt = await this.resolveSystemPrompt(promptTemplateId);
 
-    // 3. Resolve prompt template
-    let systemPrompt = BASE_SYSTEM_PROMPT_V1;
-    if (promptTemplateId) {
-      const template = await this.templateRepository.findById(promptTemplateId);
-      if (template) {
-        systemPrompt = template.content;
-      }
-    } else {
-      const activeTemplates = await this.templateRepository.findActive();
-      if (activeTemplates.length > 0) {
-        systemPrompt = activeTemplates[0].content;
-      }
-    }
-
-    // 4. Build final prompt
+    // Create prompt record
     const finalPrompt = this.promptDomainService.buildFinalPrompt(systemPrompt, userPrompt || '');
-
-    // 5. Save prompt record
     const promptRecord = await this.promptRepository.create({
       projectId,
       templateId: promptTemplateId || null,
@@ -102,73 +78,168 @@ export class RenderingApplicationService {
       finalPrompt,
     });
 
-    // 6. Create rendering record (PENDING)
+    // Create rendering record (PENDING)
     const rendering = await this.renderingRepository.create({
       projectId,
       promptId: promptRecord.id,
       status: RenderingStatus.PENDING,
     });
 
-    // 7. Convert images to base64
-    const sketchBase64 = await this.imageToBase64(selectedSketch.imageUrl);
+    // Queue info
+    const queueStatus = this.geminiClient.getQueueStatus();
+    const queuePosition = queueStatus.waiting + 1;
 
-    let moodboardUrl: string;
-    if (moodboardImageIndex !== undefined && moodboardImageIndex < moodboard.imageUrls.length) {
-      moodboardUrl = moodboard.imageUrls[moodboardImageIndex];
-    } else if (moodboard.combinedUrl) {
-      moodboardUrl = moodboard.combinedUrl;
-    } else {
-      moodboardUrl = moodboard.imageUrls[0];
-    }
-    const moodboardBase64 = await this.imageToBase64(moodboardUrl);
-
-    // 8. Update status to PROCESSING
-    await this.renderingRepository.update(rendering.id, {
-      status: RenderingStatus.PROCESSING,
+    // Fire-and-forget background processing
+    this.processRenderingAsync(rendering.id, {
+      selectedSketch,
+      moodboard,
+      moodboardImageIndex,
+      systemPrompt,
+      userPrompt: userPrompt || '',
+    }).catch(err => {
+      this.logger.error(`Background rendering ${rendering.id} failed: ${err.message}`);
     });
 
-    // 9. Call Gemini (2-step pipeline: Vision → Image Generation)
+    return {
+      renderingId: rendering.id,
+      status: RenderingStatus.PENDING,
+      message: 'Rendering queued. Poll GET /renderings/{id}/status for progress.',
+      queue: {
+        position: queuePosition,
+        estimatedWaitSeconds: Math.ceil((queuePosition * 45000) / this.geminiClient.getQueueStatus().maxConcurrent / 1000),
+        totalInQueue: queueStatus.waiting + 1,
+      },
+    };
+  }
+
+  /**
+   * Get rendering status for polling.
+   */
+  async getRenderingStatus(id: string): Promise<RenderingStatusDto> {
+    const rendering = await this.findById(id);
+    return {
+      id: rendering.id,
+      status: rendering.status,
+      resultUrl: rendering.resultUrl,
+      errorMessage: rendering.errorMessage,
+      createdAt: rendering.createdAt,
+      updatedAt: rendering.updatedAt,
+    };
+  }
+
+  /**
+   * Get current queue status.
+   */
+  getQueueStatus() {
+    const status = this.geminiClient.getQueueStatus();
+    return {
+      ...status,
+      estimatedWaitForNewRequest: Math.ceil(
+        ((status.waiting + 1) * 45000) / status.maxConcurrent / 1000,
+      ),
+    };
+  }
+
+  /**
+   * Background rendering pipeline (fire-and-forget).
+   */
+  private async processRenderingAsync(
+    renderingId: string,
+    context: {
+      selectedSketch: SketchEntity;
+      moodboard: MoodboardEntity;
+      moodboardImageIndex?: number;
+      systemPrompt: string;
+      userPrompt: string;
+    },
+  ): Promise<void> {
+    const { selectedSketch, moodboard, moodboardImageIndex, systemPrompt, userPrompt } = context;
+
     try {
+      // Convert images to base64 (async I/O)
+      const sketchBase64 = await this.imageToBase64(selectedSketch.imageUrl);
+      const moodboardUrl = this.resolveMoodboardUrl(moodboard, moodboardImageIndex);
+      const moodboardBase64 = await this.imageToBase64(moodboardUrl);
+
+      // Update status to PROCESSING
+      await this.renderingRepository.update(renderingId, {
+        status: RenderingStatus.PROCESSING,
+      });
+
+      // Call Gemini (2-step pipeline, concurrency-controlled by Semaphore)
       const result = await this.geminiClient.generateImage(
         this.promptDomainService.buildSystemPromptOnly(systemPrompt),
-        userPrompt || '',
+        userPrompt,
         sketchBase64,
         moodboardBase64,
       );
 
-      // 10. Save generated image to file
+      // Save generated image (async I/O)
       let resultUrl: string | null = null;
       if (result.imageBase64) {
-        resultUrl = await this.saveBase64Image(
-          result.imageBase64,
-          rendering.id,
-        );
+        resultUrl = await this.saveBase64Image(result.imageBase64, renderingId);
       }
 
-      // 11. Update rendering with result
-      await this.renderingRepository.update(rendering.id, {
+      // Update status to COMPLETED
+      await this.renderingRepository.update(renderingId, {
         status: RenderingStatus.COMPLETED,
         resultUrl,
       });
 
-      return {
-        projectId,
-        renderedImage: resultUrl,
-        views: resultUrl ? [resultUrl] : [],
-        promptUsed: finalPrompt,
-        metadata: result.metadata,
-      };
+      this.logger.log(`Rendering ${renderingId} completed successfully`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Rendering failed for project ${projectId}: ${errorMessage}`);
+      this.logger.error(`Rendering ${renderingId} failed: ${errorMessage}`);
 
-      await this.renderingRepository.update(rendering.id, {
+      await this.renderingRepository.update(renderingId, {
         status: RenderingStatus.FAILED,
         errorMessage,
       });
 
       throw error;
     }
+  }
+
+  // ── Helper methods ──
+
+  private async resolveSketch(projectId: string, sketchId?: string): Promise<SketchEntity> {
+    if (sketchId) {
+      const sketch = await this.sketchRepository.findById(sketchId);
+      if (!sketch) throw new BadRequestException(`Sketch ${sketchId} not found`);
+      return sketch;
+    }
+    const sketches = await this.sketchRepository.findByProjectId(projectId);
+    if (sketches.length === 0) {
+      throw new BadRequestException('Project has no sketches. Upload at least one sketch.');
+    }
+    return sketches[0];
+  }
+
+  private async resolveMoodboard(projectId: string): Promise<MoodboardEntity> {
+    const moodboard = await this.moodboardRepository.findByProjectId(projectId);
+    if (!moodboard) {
+      throw new BadRequestException('Project has no moodboard. Upload a moodboard first.');
+    }
+    return moodboard;
+  }
+
+  private async resolveSystemPrompt(promptTemplateId?: string): Promise<string> {
+    if (promptTemplateId) {
+      const template = await this.templateRepository.findById(promptTemplateId);
+      if (template) return template.content;
+    } else {
+      const activeTemplates = await this.templateRepository.findActive();
+      if (activeTemplates.length > 0) return activeTemplates[0].content;
+    }
+    return BASE_SYSTEM_PROMPT_V1;
+  }
+
+  private resolveMoodboardUrl(moodboard: MoodboardEntity, index?: number): string {
+    if (index !== undefined && index < moodboard.imageUrls.length) {
+      return moodboard.imageUrls[index];
+    }
+    if (moodboard.combinedUrl) return moodboard.combinedUrl;
+    return moodboard.imageUrls[0];
   }
 
   private async saveBase64Image(
@@ -197,7 +268,6 @@ export class RenderingApplicationService {
       return imageUrl;
     }
 
-    // /uploads/... paths are relative to cwd, not filesystem root
     const absolutePath = imageUrl.startsWith('/uploads/')
       ? path.join(process.cwd(), imageUrl)
       : path.isAbsolute(imageUrl)

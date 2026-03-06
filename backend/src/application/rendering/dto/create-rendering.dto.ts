@@ -46,3 +46,23 @@ export interface RenderingResponseDto {
     createdAt: string;
   };
 }
+
+export interface EnqueueRenderingResponseDto {
+  renderingId: string;
+  status: string;
+  message: string;
+  queue: {
+    position: number;
+    estimatedWaitSeconds: number;
+    totalInQueue: number;
+  };
+}
+
+export interface RenderingStatusDto {
+  id: string;
+  status: string;
+  resultUrl: string | null;
+  errorMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}

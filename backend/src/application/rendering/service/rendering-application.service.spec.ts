@@ -47,6 +47,13 @@ const mockTemplateRepo = {
 
 const mockGeminiClient = {
   generateImage: jest.fn(),
+  getQueueStatus: jest.fn().mockReturnValue({
+    running: 0,
+    waiting: 0,
+    maxConcurrent: 3,
+    maxQueueSize: 50,
+    availableSlots: 50,
+  }),
 };
 
 describe('RenderingApplicationService', () => {
@@ -87,31 +94,42 @@ describe('RenderingApplicationService', () => {
     });
   });
 
-  describe('executeRendering', () => {
+  describe('enqueueRendering', () => {
     const dto = {
       projectId: 'p1',
       userPrompt: 'Matte black finish with brushed aluminum.',
     };
 
     it('should throw BadRequestException when no sketches exist', async () => {
+      mockRenderingRepo.findByProjectId.mockResolvedValue([]);
       mockSketchRepo.findByProjectId.mockResolvedValue([]);
 
-      await expect(service.executeRendering(dto)).rejects.toThrow(BadRequestException);
-      await expect(service.executeRendering(dto)).rejects.toThrow('no sketches');
+      await expect(service.enqueueRendering(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.enqueueRendering(dto)).rejects.toThrow('no sketches');
     });
 
     it('should throw BadRequestException when no moodboard exists', async () => {
+      mockRenderingRepo.findByProjectId.mockResolvedValue([]);
       mockSketchRepo.findByProjectId.mockResolvedValue([
         { id: 's1', imageUrl: 'https://example.com/sketch.png' },
       ]);
       mockMoodboardRepo.findByProjectId.mockResolvedValue(null);
 
-      await expect(service.executeRendering(dto)).rejects.toThrow(BadRequestException);
-      await expect(service.executeRendering(dto)).rejects.toThrow('no moodboard');
+      await expect(service.enqueueRendering(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.enqueueRendering(dto)).rejects.toThrow('no moodboard');
     });
 
-    it('should execute full pipeline and return response', async () => {
-      // Setup: sketch, moodboard, template, prompt, rendering
+    it('should throw BadRequestException when rendering already in progress', async () => {
+      mockRenderingRepo.findByProjectId.mockResolvedValue([
+        { id: 'r-existing', status: RenderingStatus.PROCESSING },
+      ]);
+
+      await expect(service.enqueueRendering(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.enqueueRendering(dto)).rejects.toThrow('already in progress');
+    });
+
+    it('should enqueue rendering and return immediately with 202 response shape', async () => {
+      mockRenderingRepo.findByProjectId.mockResolvedValue([]);
       mockSketchRepo.findByProjectId.mockResolvedValue([
         { id: 's1', imageUrl: 'https://example.com/sketch.png', filename: 'sketch.png' },
       ]);
@@ -133,10 +151,7 @@ describe('RenderingApplicationService', () => {
         promptId: 'pr1',
         status: RenderingStatus.PENDING,
       });
-      mockRenderingRepo.update.mockResolvedValue({
-        id: 'r1',
-        status: RenderingStatus.COMPLETED,
-      });
+      mockRenderingRepo.update.mockResolvedValue({ id: 'r1' });
       mockGeminiClient.generateImage.mockResolvedValue({
         resultUrl: 'https://example.com/result.png',
         textResponse: 'Rendered successfully',
@@ -149,34 +164,24 @@ describe('RenderingApplicationService', () => {
         },
       });
 
-      const result = await service.executeRendering(dto);
+      const result = await service.enqueueRendering(dto);
 
-      // Verify response shape
-      expect(result.projectId).toBe('p1');
-      expect(result.renderedImage).toBe('https://example.com/result.png');
-      expect(result.views).toEqual(['https://example.com/result.png']);
-      expect(result.promptUsed).toBeDefined();
-      expect(result.metadata.model).toBe('gemini-2.5-flash');
-      expect(result.metadata.totalTokens).toBe(2320);
+      // Verify async response shape (not the final rendering result)
+      expect(result.renderingId).toBe('r1');
+      expect(result.status).toBe(RenderingStatus.PENDING);
+      expect(result.message).toContain('queued');
+      expect(result.queue).toBeDefined();
+      expect(result.queue.position).toBeGreaterThan(0);
 
-      // Verify pipeline steps
+      // Verify pipeline steps were initiated
       expect(mockSketchRepo.findByProjectId).toHaveBeenCalledWith('p1');
       expect(mockMoodboardRepo.findByProjectId).toHaveBeenCalledWith('p1');
       expect(mockPromptRepo.create).toHaveBeenCalledTimes(1);
       expect(mockRenderingRepo.create).toHaveBeenCalledTimes(1);
-      expect(mockGeminiClient.generateImage).toHaveBeenCalledTimes(1);
-
-      // Verify status transitions: PENDING → PROCESSING → COMPLETED
-      expect(mockRenderingRepo.update).toHaveBeenCalledWith('r1', {
-        status: RenderingStatus.PROCESSING,
-      });
-      expect(mockRenderingRepo.update).toHaveBeenCalledWith('r1', {
-        status: RenderingStatus.COMPLETED,
-        resultUrl: 'https://example.com/result.png',
-      });
     });
 
     it('should use specific prompt template when templateId is provided', async () => {
+      mockRenderingRepo.findByProjectId.mockResolvedValue([]);
       mockSketchRepo.findByProjectId.mockResolvedValue([
         { id: 's1', imageUrl: 'https://example.com/sketch.png' },
       ]);
@@ -191,44 +196,20 @@ describe('RenderingApplicationService', () => {
       });
       mockPromptRepo.create.mockResolvedValue({ id: 'pr1' });
       mockRenderingRepo.create.mockResolvedValue({ id: 'r1', status: RenderingStatus.PENDING });
-      mockRenderingRepo.update.mockResolvedValue({ id: 'r1', status: RenderingStatus.COMPLETED });
+      mockRenderingRepo.update.mockResolvedValue({ id: 'r1' });
       mockGeminiClient.generateImage.mockResolvedValue({
         resultUrl: null,
         textResponse: 'No image',
         metadata: { model: 'gemini-2.5-flash', promptTokens: 0, completionTokens: 0, totalTokens: 0, createdAt: '' },
       });
 
-      const result = await service.executeRendering({
+      const result = await service.enqueueRendering({
         ...dto,
         promptTemplateId: 't1',
       });
 
       expect(mockTemplateRepo.findById).toHaveBeenCalledWith('t1');
-      expect(result.views).toEqual([]);
-    });
-
-    it('should mark rendering as FAILED when OpenAI call fails', async () => {
-      mockSketchRepo.findByProjectId.mockResolvedValue([
-        { id: 's1', imageUrl: 'https://example.com/sketch.png' },
-      ]);
-      mockMoodboardRepo.findByProjectId.mockResolvedValue({
-        id: 'm1',
-        imageUrls: ['https://example.com/mood.png'],
-        combinedUrl: 'https://example.com/combined.png',
-      });
-      mockTemplateRepo.findActive.mockResolvedValue([]);
-      mockPromptRepo.create.mockResolvedValue({ id: 'pr1' });
-      mockRenderingRepo.create.mockResolvedValue({ id: 'r1', status: RenderingStatus.PENDING });
-      mockRenderingRepo.update.mockResolvedValue({ id: 'r1' });
-      mockGeminiClient.generateImage.mockRejectedValue(new Error('API quota exceeded'));
-
-      await expect(service.executeRendering(dto)).rejects.toThrow('API quota exceeded');
-
-      // Verify FAILED status was set
-      expect(mockRenderingRepo.update).toHaveBeenCalledWith('r1', {
-        status: RenderingStatus.FAILED,
-        errorMessage: 'API quota exceeded',
-      });
+      expect(result.renderingId).toBe('r1');
     });
   });
 });
