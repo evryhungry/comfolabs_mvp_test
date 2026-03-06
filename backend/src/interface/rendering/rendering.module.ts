@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { RenderingController } from './rendering.controller.js';
 import { RenderingApplicationService } from '../../application/rendering/service/rendering-application.service.js';
+import { RenderingRecoveryService } from '../../application/rendering/service/rendering-recovery.service.js';
 import { RenderingMikroRepository } from '../../infrastructure/persistence/rendering-mikro.repository.js';
 import { RENDERING_REPOSITORY } from '../../domain/rendering/repository/rendering.repository.interface.js';
 import { SketchMikroRepository } from '../../infrastructure/persistence/sketch-mikro.repository.js';
@@ -21,6 +22,7 @@ import { PromptEntity, PromptTemplateEntity } from '../../domain/prompt/model/pr
   controllers: [RenderingController],
   providers: [
     RenderingApplicationService,
+    RenderingRecoveryService,
     GeminiClient,
     { provide: RENDERING_REPOSITORY, useClass: RenderingMikroRepository },
     { provide: SKETCH_REPOSITORY, useClass: SketchMikroRepository },

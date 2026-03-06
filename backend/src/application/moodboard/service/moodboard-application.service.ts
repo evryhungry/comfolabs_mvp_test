@@ -1,4 +1,6 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, HttpStatus } from '@nestjs/common';
+import { BusinessException } from '../../../infrastructure/filter/business.exception.js';
+import { ErrorCode } from '../../../infrastructure/filter/error-codes.js';
 import type { IMoodboardRepository } from '../../../domain/moodboard/repository/moodboard.repository.interface.js';
 import { MOODBOARD_REPOSITORY } from '../../../domain/moodboard/repository/moodboard.repository.interface.js';
 import { CreateMoodboardDto } from '../dto/create-moodboard.dto.js';
@@ -18,7 +20,7 @@ export class MoodboardApplicationService {
 
   async findById(id: string): Promise<MoodboardEntity> {
     const moodboard = await this.moodboardRepository.findById(id);
-    if (!moodboard) throw new NotFoundException(`Moodboard ${id} not found`);
+    if (!moodboard) throw new BusinessException(ErrorCode.MOODBOARD_NOT_FOUND, `Moodboard ${id} not found`, HttpStatus.NOT_FOUND);
     return moodboard;
   }
 

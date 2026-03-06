@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Prompt, PromptTemplate, CreatePromptDto } from '../model/Prompt'
 import { promptApi } from '../service/promptApi'
+import { ApiError } from '../../../shared/api'
 
 export const usePromptStore = defineStore('prompt', () => {
   const prompts = ref<Prompt[]>([])
@@ -15,7 +16,7 @@ export const usePromptStore = defineStore('prompt', () => {
     try {
       prompts.value = await promptApi.getByProjectId(projectId)
     } catch (e) {
-      error.value = 'Failed to fetch prompts'
+      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch prompts'
     } finally {
       loading.value = false
     }

@@ -1,4 +1,6 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, HttpStatus } from '@nestjs/common';
+import { BusinessException } from '../../../infrastructure/filter/business.exception.js';
+import { ErrorCode } from '../../../infrastructure/filter/error-codes.js';
 import type { IProjectRepository } from '../../../domain/project/repository/project.repository.interface.js';
 import { PROJECT_REPOSITORY } from '../../../domain/project/repository/project.repository.interface.js';
 import { CreateProjectDto } from '../dto/create-project.dto.js';
@@ -18,7 +20,7 @@ export class ProjectApplicationService {
 
   async findById(id: string): Promise<ProjectEntity> {
     const project = await this.projectRepository.findById(id);
-    if (!project) throw new NotFoundException(`Project ${id} not found`);
+    if (!project) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND, `Project ${id} not found`, HttpStatus.NOT_FOUND);
     return project;
   }
 

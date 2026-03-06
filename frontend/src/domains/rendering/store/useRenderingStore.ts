@@ -9,6 +9,7 @@ import type {
 } from '../model/Rendering'
 import { RenderingStatus } from '../model/Rendering'
 import { renderingApi } from '../service/renderingApi'
+import { ApiError } from '../../../shared/api'
 
 const POLL_INTERVAL_MS = 3000
 const MAX_POLL_ATTEMPTS = 200 // ~10 min max
@@ -57,7 +58,11 @@ export const useRenderingStore = defineStore('rendering', () => {
 
       return enqueueResult
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to execute rendering'
+      if (e instanceof ApiError) {
+        error.value = `[${e.errorCode}] ${e.message}`
+      } else {
+        error.value = e instanceof Error ? e.message : 'Failed to execute rendering'
+      }
       throw e
     } finally {
       executing.value = false

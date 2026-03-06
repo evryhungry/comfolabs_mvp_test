@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Moodboard, CreateMoodboardDto, UpdateMoodboardDto } from '../model/Moodboard'
 import { moodboardApi } from '../service/moodboardApi'
+import { ApiError } from '../../../shared/api'
 
 export const useMoodboardStore = defineStore('moodboard', () => {
   const moodboard = ref<Moodboard | null>(null)
@@ -14,7 +15,7 @@ export const useMoodboardStore = defineStore('moodboard', () => {
     try {
       moodboard.value = await moodboardApi.getByProjectId(projectId)
     } catch (e) {
-      error.value = 'Failed to fetch moodboard'
+      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch moodboard'
     } finally {
       loading.value = false
     }

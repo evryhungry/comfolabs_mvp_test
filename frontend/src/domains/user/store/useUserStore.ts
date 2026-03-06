@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { User, CreateUserDto } from '../model/User'
 import { userApi } from '../service/userApi'
+import { ApiError } from '../../../shared/api'
 
 const STORAGE_KEY = 'comfolabs_user'
 
@@ -29,9 +30,9 @@ export const useUserStore = defineStore('user', () => {
       currentUser.value = user
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
       return user
-    } catch {
-      error.value = 'Failed to create user'
-      throw error.value
+    } catch (e) {
+      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to create user'
+      throw e
     } finally {
       loading.value = false
     }
@@ -49,8 +50,8 @@ export const useUserStore = defineStore('user', () => {
       currentUser.value = user
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
       return user
-    } catch {
-      error.value = 'Failed to sign in'
+    } catch (e) {
+      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to sign in'
       return null
     } finally {
       loading.value = false

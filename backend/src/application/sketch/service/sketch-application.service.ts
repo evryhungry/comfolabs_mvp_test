@@ -1,4 +1,6 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, HttpStatus } from '@nestjs/common';
+import { BusinessException } from '../../../infrastructure/filter/business.exception.js';
+import { ErrorCode } from '../../../infrastructure/filter/error-codes.js';
 import type { ISketchRepository } from '../../../domain/sketch/repository/sketch.repository.interface.js';
 import { SKETCH_REPOSITORY } from '../../../domain/sketch/repository/sketch.repository.interface.js';
 import { CreateSketchDto } from '../dto/create-sketch.dto.js';
@@ -17,7 +19,7 @@ export class SketchApplicationService {
 
   async findById(id: string): Promise<SketchEntity> {
     const sketch = await this.sketchRepository.findById(id);
-    if (!sketch) throw new NotFoundException(`Sketch ${id} not found`);
+    if (!sketch) throw new BusinessException(ErrorCode.SKETCH_NOT_FOUND, `Sketch ${id} not found`, HttpStatus.NOT_FOUND);
     return sketch;
   }
 
