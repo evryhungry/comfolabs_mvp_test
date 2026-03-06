@@ -1,6 +1,4 @@
-import { Injectable, Inject, HttpStatus } from '@nestjs/common';
-import { BusinessException } from '../../../infrastructure/filter/business.exception.js';
-import { ErrorCode } from '../../../infrastructure/filter/error-codes.js';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import type { IPromptRepository, IPromptTemplateRepository } from '../../../domain/prompt/repository/prompt.repository.interface.js';
 import { PROMPT_REPOSITORY, PROMPT_TEMPLATE_REPOSITORY } from '../../../domain/prompt/repository/prompt.repository.interface.js';
 import { PromptDomainService } from '../../../domain/prompt/service/prompt-domain.service.js';
@@ -25,7 +23,7 @@ export class PromptApplicationService {
 
   async findById(id: string): Promise<PromptEntity> {
     const prompt = await this.promptRepository.findById(id);
-    if (!prompt) throw new BusinessException(ErrorCode.PROMPT_NOT_FOUND, `Prompt ${id} not found`, HttpStatus.NOT_FOUND);
+    if (!prompt) throw new NotFoundException(`Prompt ${id} not found`);
     return prompt;
   }
 

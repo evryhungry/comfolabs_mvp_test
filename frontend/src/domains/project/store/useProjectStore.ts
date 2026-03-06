@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Project, CreateProjectDto } from '../model/Project'
 import { projectApi } from '../service/projectApi'
-import { ApiError } from '../../../shared/api'
 
 export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([])
@@ -18,7 +17,7 @@ export const useProjectStore = defineStore('project', () => {
         ? await projectApi.getByUserId(userId)
         : await projectApi.getAll()
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch projects'
+      error.value = 'Failed to fetch projects'
     } finally {
       loading.value = false
     }
@@ -30,7 +29,7 @@ export const useProjectStore = defineStore('project', () => {
     try {
       currentProject.value = await projectApi.getById(id)
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch project'
+      error.value = 'Failed to fetch project'
     } finally {
       loading.value = false
     }

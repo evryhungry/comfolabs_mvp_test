@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, QueryOrder } from '@mikro-orm/mysql';
 import { IRenderingRepository } from '../../domain/rendering/repository/rendering.repository.interface.js';
-import { RenderingEntity, RenderingStatus } from '../../domain/rendering/model/rendering.entity.js';
+import { RenderingEntity } from '../../domain/rendering/model/rendering.entity.js';
 
 @Injectable()
 export class RenderingMikroRepository implements IRenderingRepository {
@@ -13,14 +13,6 @@ export class RenderingMikroRepository implements IRenderingRepository {
 
   async findById(id: string): Promise<RenderingEntity | null> {
     return this.em.findOne(RenderingEntity, { id });
-  }
-
-  async findStuck(thresholdMs: number): Promise<RenderingEntity[]> {
-    const cutoff = new Date(Date.now() - thresholdMs);
-    return this.em.find(RenderingEntity, {
-      status: { $in: [RenderingStatus.PENDING, RenderingStatus.PROCESSING] },
-      updatedAt: { $lt: cutoff },
-    });
   }
 
   async create(data: Partial<RenderingEntity>): Promise<RenderingEntity> {

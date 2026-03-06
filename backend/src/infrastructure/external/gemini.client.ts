@@ -1,6 +1,4 @@
-import { Injectable, Logger, HttpStatus } from '@nestjs/common';
-import { BusinessException } from '../filter/business.exception.js';
-import { ErrorCode } from '../filter/error-codes.js';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { geminiConfig } from '../config/gemini.config.js';
 
@@ -47,10 +45,8 @@ export class GeminiClient {
       return;
     }
     if (this.waitQueue.length >= this.MAX_QUEUE_SIZE) {
-      throw new BusinessException(
-        ErrorCode.GEMINI_QUEUE_FULL,
+      throw new ServiceUnavailableException(
         `Rendering queue is full (${this.MAX_QUEUE_SIZE} waiting). Please try again later.`,
-        HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
     return new Promise<void>((resolve) => {
@@ -232,7 +228,7 @@ ${sketchAnalysis}
         }
 
         if (!imageBase64) {
-          throw new BusinessException(ErrorCode.GEMINI_NO_IMAGE, 'Gemini did not return image data', HttpStatus.BAD_GATEWAY);
+          throw new Error('Gemini did not return image data');
         }
 
         this.logger.log(
@@ -259,7 +255,7 @@ ${sketchAnalysis}
         );
 
         if (this.isRetryable(error) && attempt < geminiConfig.maxRetries) {
-          const delay = this.getRetryDelay(error, attempt);
+          const delay = Math.pow(2, attempt) * 1000;
           await this.sleep(delay);
           continue;
         }
@@ -268,11 +264,7 @@ ${sketchAnalysis}
       }
     }
 
-    const finalError = lastError || new Error('Gemini API call failed');
-    if (finalError instanceof BusinessException) throw finalError;
-
-    const errorCode = this.classifyApiError(finalError);
-    throw new BusinessException(errorCode, finalError.message, HttpStatus.BAD_GATEWAY);
+    throw lastError || new Error('Gemini API call failed');
   }
 
   private parseBase64Image(dataUrl: string): {
@@ -293,42 +285,15 @@ ${sketchAnalysis}
     return { mimeType: 'image/png', data: dataUrl };
   }
 
-  private classifyApiError(error: Error): ErrorCode {
-    if (error && typeof error === 'object' && 'status' in error) {
-      const status = (error as { status: number }).status;
-      if (status === 401 || status === 403) return ErrorCode.GEMINI_AUTH_ERROR;
-      if (status === 429) return ErrorCode.GEMINI_RATE_LIMITED;
-    }
-    return ErrorCode.GEMINI_API_FAILED;
-  }
-
   private isRetryable(error: unknown): boolean {
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as { status: number }).status;
-      // 401/403 are auth errors — retrying won't help
-      if (status === 401 || status === 403) return false;
       return [429, 500, 502, 503].includes(status);
     }
     if (error instanceof Error && error.message.includes('timeout')) {
       return true;
     }
     return false;
-  }
-
-  private getRetryDelay(error: unknown, attempt: number): number {
-    // Respect Retry-After header from 429 responses
-    if (error && typeof error === 'object' && 'headers' in error) {
-      const headers = (error as { headers?: Record<string, string> }).headers;
-      const retryAfter = headers?.['retry-after'];
-      if (retryAfter) {
-        const seconds = parseInt(retryAfter, 10);
-        if (!isNaN(seconds) && seconds > 0) {
-          return seconds * 1000;
-        }
-      }
-    }
-    // Default: exponential backoff
-    return Math.pow(2, attempt) * 1000;
   }
 
   private sleep(ms: number): Promise<void> {
