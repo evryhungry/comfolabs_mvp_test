@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { GeminiClient } from './gemini.client.js';
 
 // Mock the @google/genai SDK

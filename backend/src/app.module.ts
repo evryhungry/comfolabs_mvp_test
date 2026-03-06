@@ -9,6 +9,7 @@ import { SketchModule } from './interface/sketch/sketch.module.js';
 import { MoodboardModule } from './interface/moodboard/moodboard.module.js';
 import { PromptModule } from './interface/prompt/prompt.module.js';
 import { RenderingModule } from './interface/rendering/rendering.module.js';
+import { HealthModule } from './interface/health/health.module.js';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RenderingModule } from './interface/rendering/rendering.module.js';
       ttl: 60000,
       limit: 60,
     }]),
+    HealthModule,
     UserModule,
     ProjectModule,
     SketchModule,

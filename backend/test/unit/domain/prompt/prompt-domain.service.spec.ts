@@ -1,4 +1,4 @@
-import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from './prompt-domain.service.js';
+import { PromptDomainService, BASE_SYSTEM_PROMPT_V1 } from '../../../../src/domain/prompt/service/prompt-domain.service';
 
 describe('PromptDomainService', () => {
   let service: PromptDomainService;
@@ -20,7 +20,7 @@ describe('PromptDomainService', () => {
       expect(result).toContain('Matte black finish with brushed aluminum.');
     });
 
-    it('should place components in correct order', () => {
+    it('should place components in correct order: system → moodboard → sketch → user', () => {
       const result = service.buildFinalPrompt('SYSTEM', 'USER_INPUT');
 
       const systemIdx = result.indexOf('SYSTEM');
@@ -32,6 +32,11 @@ describe('PromptDomainService', () => {
       expect(moodboardIdx).toBeLessThan(sketchIdx);
       expect(sketchIdx).toBeLessThan(userIdx);
     });
+
+    it('should handle empty user input gracefully', () => {
+      const result = service.buildFinalPrompt('SYSTEM', '');
+      expect(result).toContain('SYSTEM');
+    });
   });
 
   describe('buildSystemPromptOnly', () => {
@@ -42,16 +47,21 @@ describe('PromptDomainService', () => {
   });
 
   describe('BASE_SYSTEM_PROMPT_V1', () => {
-    it('should contain key rendering instructions', () => {
+    it('should contain all 6 view references for multi-view rendering', () => {
       expect(BASE_SYSTEM_PROMPT_V1).toContain('[FRONT]');
       expect(BASE_SYSTEM_PROMPT_V1).toContain('[LEFT]');
       expect(BASE_SYSTEM_PROMPT_V1).toContain('[RIGHT]');
       expect(BASE_SYSTEM_PROMPT_V1).toContain('[BACK]');
+      expect(BASE_SYSTEM_PROMPT_V1).toContain('[TOP]');
       expect(BASE_SYSTEM_PROMPT_V1).toContain('PERSPECTIVE');
     });
 
     it('should contain 2x3 grid layout instruction', () => {
       expect(BASE_SYSTEM_PROMPT_V1).toContain('2x3');
+    });
+
+    it('should contain consistent geometry rule', () => {
+      expect(BASE_SYSTEM_PROMPT_V1).toContain('Consistent Geometry');
     });
   });
 });
