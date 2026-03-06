@@ -20,10 +20,9 @@ const { currentProject, loading, error } = useProjectDetail(projectId)
 const { sketches, uploadSketch, removeSketch } = useSketch(projectId)
 const { moodboard, uploadMoodboard } = useMoodboard(projectId)
 const { templates } = usePrompt(projectId)
-const { renderings, executeRendering } = useRendering(projectId)
+const { renderings, executing, executeRendering } = useRendering(projectId)
 
 const activeTab = ref<'design' | 'render'>('design')
-const executing = ref(false)
 const selectedSketchId = ref<string | null>(null)
 const selectedMoodboardIndex = ref<number | null>(null)
 
@@ -65,7 +64,6 @@ function selectMoodboardImage(index: number) {
 }
 
 async function handleExecuteRendering(payload: { templateId?: string; userInput: string }) {
-  executing.value = true
   try {
     await executeRendering({
       projectId,
@@ -76,8 +74,6 @@ async function handleExecuteRendering(payload: { templateId?: string; userInput:
     })
   } catch {
     // handled by store
-  } finally {
-    executing.value = false
   }
 }
 </script>

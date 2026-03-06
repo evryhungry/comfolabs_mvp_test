@@ -1,6 +1,13 @@
 import api from '../../../shared/api'
 import { API_ENDPOINTS } from '../../../shared/constants'
-import type { Rendering, CreateRenderingDto, ExecuteRenderingRequest, RenderingResponseDto } from '../model/Rendering'
+import type {
+  Rendering,
+  CreateRenderingDto,
+  ExecuteRenderingRequest,
+  EnqueueRenderingResponse,
+  RenderingStatusResponse,
+  QueueStatusResponse,
+} from '../model/Rendering'
 
 export const renderingApi = {
   async getByProjectId(projectId: string): Promise<Rendering[]> {
@@ -20,10 +27,24 @@ export const renderingApi = {
     return data
   },
 
-  async execute(request: ExecuteRenderingRequest): Promise<RenderingResponseDto> {
-    const { data } = await api.post<RenderingResponseDto>(
+  async execute(request: ExecuteRenderingRequest): Promise<EnqueueRenderingResponse> {
+    const { data } = await api.post<EnqueueRenderingResponse>(
       `${API_ENDPOINTS.RENDERINGS}/execute`,
       request,
+    )
+    return data
+  },
+
+  async getStatus(renderingId: string): Promise<RenderingStatusResponse> {
+    const { data } = await api.get<RenderingStatusResponse>(
+      `${API_ENDPOINTS.RENDERINGS}/${renderingId}/status`,
+    )
+    return data
+  },
+
+  async getQueueStatus(): Promise<QueueStatusResponse> {
+    const { data } = await api.get<QueueStatusResponse>(
+      `${API_ENDPOINTS.RENDERINGS}/queue/status`,
     )
     return data
   },

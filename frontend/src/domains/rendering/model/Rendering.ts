@@ -41,16 +41,30 @@ export interface ExecuteRenderingRequest {
   promptTemplateId?: string
 }
 
-export interface RenderingResponseDto {
-  projectId: string
-  renderedImage: string | null
-  views: string[]
-  promptUsed: string
-  metadata: {
-    model: string
-    promptTokens: number
-    completionTokens: number
-    totalTokens: number
-    createdAt: string
+export interface EnqueueRenderingResponse {
+  renderingId: string
+  status: string
+  message: string
+  queue: {
+    position: number
+    estimatedWaitSeconds: number
+    totalInQueue: number
   }
+}
+
+export interface RenderingStatusResponse {
+  id: string
+  status: RenderingStatus
+  resultUrl: string | null
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface QueueStatusResponse {
+  running: number
+  waiting: number
+  maxConcurrent: number
+  maxQueueSize: number
+  estimatedWaitForNewRequest: number
 }
