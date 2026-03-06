@@ -1,4 +1,6 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, HttpStatus } from '@nestjs/common';
+import { BusinessException } from '../../../infrastructure/filter/business.exception.js';
+import { ErrorCode } from '../../../infrastructure/filter/error-codes.js';
 import type { IUserRepository } from '../../../domain/user/repository/user.repository.interface.js';
 import { USER_REPOSITORY } from '../../../domain/user/repository/user.repository.interface.js';
 import { CreateUserDto } from '../dto/create-user.dto.js';
@@ -18,7 +20,7 @@ export class UserApplicationService {
 
   async findById(id: string): Promise<UserEntity> {
     const user = await this.userRepository.findById(id);
-    if (!user) throw new NotFoundException(`User ${id} not found`);
+    if (!user) throw new BusinessException(ErrorCode.USER_NOT_FOUND, `User ${id} not found`, HttpStatus.NOT_FOUND);
     return user;
   }
 

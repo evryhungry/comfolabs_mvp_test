@@ -1,4 +1,6 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, Inject, HttpStatus, Logger } from '@nestjs/common';
+import { BusinessException } from '../../../infrastructure/filter/business.exception.js';
+import { ErrorCode } from '../../../infrastructure/filter/error-codes.js';
 import type { IRenderingRepository } from '../../../domain/rendering/repository/rendering.repository.interface.js';
 import { RENDERING_REPOSITORY } from '../../../domain/rendering/repository/rendering.repository.interface.js';
 import type { ISketchRepository } from '../../../domain/sketch/repository/sketch.repository.interface.js';
@@ -42,7 +44,7 @@ export class RenderingApplicationService {
 
   async findById(id: string): Promise<RenderingEntity> {
     const rendering = await this.renderingRepository.findById(id);
-    if (!rendering) throw new NotFoundException(`Rendering ${id} not found`);
+    if (!rendering) throw new BusinessException(ErrorCode.RENDERING_NOT_FOUND, `Rendering ${id} not found`, HttpStatus.NOT_FOUND);
     return rendering;
   }
 
@@ -59,8 +61,10 @@ export class RenderingApplicationService {
       r => r.status === RenderingStatus.PENDING || r.status === RenderingStatus.PROCESSING,
     );
     if (inProgress) {
-      throw new BadRequestException(
+      throw new BusinessException(
+        ErrorCode.RENDERING_DUPLICATE,
         `Rendering ${inProgress.id} is already in progress for this project.`,
+        HttpStatus.CONFLICT,
       );
     }
 
@@ -205,12 +209,12 @@ export class RenderingApplicationService {
   private async resolveSketch(projectId: string, sketchId?: string): Promise<SketchEntity> {
     if (sketchId) {
       const sketch = await this.sketchRepository.findById(sketchId);
-      if (!sketch) throw new BadRequestException(`Sketch ${sketchId} not found`);
+      if (!sketch) throw new BusinessException(ErrorCode.SKETCH_NOT_FOUND, `Sketch ${sketchId} not found`, HttpStatus.NOT_FOUND);
       return sketch;
     }
     const sketches = await this.sketchRepository.findByProjectId(projectId);
     if (sketches.length === 0) {
-      throw new BadRequestException('Project has no sketches. Upload at least one sketch.');
+      throw new BusinessException(ErrorCode.SKETCH_REQUIRED, 'Project has no sketches. Upload at least one sketch.', HttpStatus.BAD_REQUEST);
     }
     return sketches[0];
   }
@@ -218,7 +222,7 @@ export class RenderingApplicationService {
   private async resolveMoodboard(projectId: string): Promise<MoodboardEntity> {
     const moodboard = await this.moodboardRepository.findByProjectId(projectId);
     if (!moodboard) {
-      throw new BadRequestException('Project has no moodboard. Upload a moodboard first.');
+      throw new BusinessException(ErrorCode.MOODBOARD_REQUIRED, 'Project has no moodboard. Upload a moodboard first.', HttpStatus.BAD_REQUEST);
     }
     return moodboard;
   }
