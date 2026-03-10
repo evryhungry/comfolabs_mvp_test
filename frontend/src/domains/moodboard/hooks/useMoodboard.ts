@@ -1,21 +1,17 @@
-import { onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
+import { useEffect } from 'react'
 import { useMoodboardStore } from '../store/useMoodboardStore'
 
 export function useMoodboard(projectId: string) {
-  const store = useMoodboardStore()
-  const { moodboard, loading, error } = storeToRefs(store)
+  const moodboard = useMoodboardStore((s) => s.moodboard)
+  const loading = useMoodboardStore((s) => s.loading)
+  const error = useMoodboardStore((s) => s.error)
+  const fetchMoodboard = useMoodboardStore((s) => s.fetchMoodboard)
+  const uploadMoodboard = useMoodboardStore((s) => s.uploadMoodboard)
+  const updateMoodboard = useMoodboardStore((s) => s.updateMoodboard)
 
-  onMounted(() => {
-    store.fetchMoodboard(projectId)
-  })
+  useEffect(() => {
+    fetchMoodboard(projectId)
+  }, [projectId, fetchMoodboard])
 
-  return {
-    moodboard,
-    loading,
-    error,
-    createMoodboard: store.createMoodboard,
-    uploadMoodboard: store.uploadMoodboard,
-    updateMoodboard: store.updateMoodboard,
-  }
+  return { moodboard, loading, error, uploadMoodboard, updateMoodboard }
 }
