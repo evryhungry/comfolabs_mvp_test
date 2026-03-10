@@ -1,42 +1,43 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Sketch, CreateSketchDto } from '../model/Sketch'
+import { create } from 'zustand'
+import type { Sketch } from '../model/Sketch'
 import { sketchApi } from '../service/sketchApi'
 import { ApiError } from '../../../shared/api'
 
-export const useSketchStore = defineStore('sketch', () => {
-  const sketches = ref<Sketch[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+interface SketchState {
+  sketches: Sketch[]
+  loading: boolean
+  error: string | null
+  fetchSketches: (projectId: string) => Promise<void>
+  uploadSketch: (projectId: string, file: File) => Promise<Sketch>
+  removeSketch: (id: string) => Promise<void>
+}
 
-  async function fetchSketches(projectId: string) {
-    loading.value = true
-    error.value = null
+export const useSketchStore = create<SketchState>((set, get) => ({
+  sketches: [],
+  loading: false,
+  error: null,
+
+  async fetchSketches(projectId: string) {
+    set({ loading: true, error: null })
     try {
-      sketches.value = await sketchApi.getByProjectId(projectId)
+      const sketches = await sketchApi.getByProjectId(projectId)
+      set({ sketches, loading: false })
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch sketches'
-    } finally {
-      loading.value = false
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch sketches',
+        loading: false,
+      })
     }
-  }
+  },
 
-  async function addSketch(dto: CreateSketchDto) {
-    const sketch = await sketchApi.create(dto)
-    sketches.value.push(sketch)
-    return sketch
-  }
-
-  async function uploadSketch(projectId: string, file: File) {
+  async uploadSketch(projectId: string, file: File) {
     const sketch = await sketchApi.upload(projectId, file)
-    sketches.value.push(sketch)
+    set({ sketches: [...get().sketches, sketch] })
     return sketch
-  }
+  },
 
-  async function removeSketch(id: string) {
+  async removeSketch(id: string) {
     await sketchApi.delete(id)
-    sketches.value = sketches.value.filter((s) => s.id !== id)
-  }
-
-  return { sketches, loading, error, fetchSketches, addSketch, uploadSketch, removeSketch }
-})
+    set({ sketches: get().sketches.filter((s) => s.id !== id) })
+  },
+}))
