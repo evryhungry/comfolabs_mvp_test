@@ -1,60 +1,61 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import type { Project, CreateProjectDto } from '../model/Project'
 import { projectApi } from '../service/projectApi'
 import { ApiError } from '../../../shared/api'
 
-export const useProjectStore = defineStore('project', () => {
-  const projects = ref<Project[]>([])
-  const currentProject = ref<Project | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+interface ProjectState {
+  projects: Project[]
+  currentProject: Project | null
+  loading: boolean
+  error: string | null
+  fetchProjects: (userId?: string) => Promise<void>
+  fetchProject: (id: string) => Promise<void>
+  createProject: (dto: CreateProjectDto) => Promise<Project>
+  deleteProject: (id: string) => Promise<void>
+}
 
-  async function fetchProjects(userId?: string) {
-    loading.value = true
-    error.value = null
+export const useProjectStore = create<ProjectState>((set, get) => ({
+  projects: [],
+  currentProject: null,
+  loading: false,
+  error: null,
+
+  async fetchProjects(userId?: string) {
+    set({ loading: true, error: null })
     try {
-      projects.value = userId
+      const projects = userId
         ? await projectApi.getByUserId(userId)
         : await projectApi.getAll()
+      set({ projects, loading: false })
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch projects'
-    } finally {
-      loading.value = false
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch projects',
+        loading: false,
+      })
     }
-  }
+  },
 
-  async function fetchProject(id: string) {
-    loading.value = true
-    error.value = null
+  async fetchProject(id: string) {
+    set({ loading: true, error: null })
     try {
-      currentProject.value = await projectApi.getById(id)
+      const currentProject = await projectApi.getById(id)
+      set({ currentProject, loading: false })
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch project'
-    } finally {
-      loading.value = false
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch project',
+        loading: false,
+      })
     }
-  }
+  },
 
-  async function createProject(dto: CreateProjectDto) {
+  async createProject(dto: CreateProjectDto) {
     const project = await projectApi.create(dto)
-    projects.value.unshift(project)
+    set({ projects: [project, ...get().projects] })
     return project
-  }
+  },
 
-  async function deleteProject(id: string) {
+  async deleteProject(id: string) {
     await projectApi.delete(id)
-    projects.value = projects.value.filter((p) => p.id !== id)
-  }
-
-  return {
-    projects,
-    currentProject,
-    loading,
-    error,
-    fetchProjects,
-    fetchProject,
-    createProject,
-    deleteProject,
-  }
-})
+    set({ projects: get().projects.filter((p) => p.id !== id) })
+  },
+}))
