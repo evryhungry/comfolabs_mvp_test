@@ -1,36 +1,36 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Prompt, PromptTemplate, CreatePromptDto } from '../model/Prompt'
+import { create } from 'zustand'
+import type { PromptTemplate } from '../model/Prompt'
 import { promptApi } from '../service/promptApi'
 import { ApiError } from '../../../shared/api'
 
-export const usePromptStore = defineStore('prompt', () => {
-  const prompts = ref<Prompt[]>([])
-  const templates = ref<PromptTemplate[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+interface PromptState {
+  templates: PromptTemplate[]
+  loading: boolean
+  error: string | null
+  fetchPrompts: (projectId: string) => Promise<void>
+  fetchTemplates: () => Promise<void>
+}
 
-  async function fetchPrompts(projectId: string) {
-    loading.value = true
-    error.value = null
+export const usePromptStore = create<PromptState>((set) => ({
+  templates: [],
+  loading: false,
+  error: null,
+
+  async fetchPrompts(projectId: string) {
+    set({ loading: true, error: null })
     try {
-      prompts.value = await promptApi.getByProjectId(projectId)
+      await promptApi.getByProjectId(projectId)
+      set({ loading: false })
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch prompts'
-    } finally {
-      loading.value = false
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch prompts',
+        loading: false,
+      })
     }
-  }
+  },
 
-  async function fetchTemplates() {
-    templates.value = await promptApi.getTemplates()
-  }
-
-  async function createPrompt(dto: CreatePromptDto) {
-    const prompt = await promptApi.create(dto)
-    prompts.value.unshift(prompt)
-    return prompt
-  }
-
-  return { prompts, templates, loading, error, fetchPrompts, fetchTemplates, createPrompt }
-})
+  async fetchTemplates() {
+    const templates = await promptApi.getTemplates()
+    set({ templates })
+  },
+}))

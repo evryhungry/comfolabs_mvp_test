@@ -1,28 +1,18 @@
-import { onMounted, onUnmounted } from 'vue'
-import { storeToRefs } from 'pinia'
+import { useEffect } from 'react'
 import { useRenderingStore } from '../store/useRenderingStore'
 
 export function useRendering(projectId: string) {
-  const store = useRenderingStore()
-  const { renderings, lastEnqueueResponse, pollingStatus, loading, executing, error } =
-    storeToRefs(store)
+  const renderings = useRenderingStore((s) => s.renderings)
+  const executing = useRenderingStore((s) => s.executing)
+  const error = useRenderingStore((s) => s.error)
+  const fetchRenderings = useRenderingStore((s) => s.fetchRenderings)
+  const executeRendering = useRenderingStore((s) => s.executeRendering)
+  const stopPolling = useRenderingStore((s) => s.stopPolling)
 
-  onMounted(() => {
-    store.fetchRenderings(projectId)
-  })
+  useEffect(() => {
+    fetchRenderings(projectId)
+    return () => stopPolling()
+  }, [projectId, fetchRenderings, stopPolling])
 
-  onUnmounted(() => {
-    store.stopPolling()
-  })
-
-  return {
-    renderings,
-    lastEnqueueResponse,
-    pollingStatus,
-    loading,
-    executing,
-    error,
-    createRendering: store.createRendering,
-    executeRendering: store.executeRendering,
-  }
+  return { renderings, executing, error, executeRendering }
 }

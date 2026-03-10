@@ -1,43 +1,44 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Moodboard, CreateMoodboardDto, UpdateMoodboardDto } from '../model/Moodboard'
+import { create } from 'zustand'
+import type { Moodboard, UpdateMoodboardDto } from '../model/Moodboard'
 import { moodboardApi } from '../service/moodboardApi'
 import { ApiError } from '../../../shared/api'
 
-export const useMoodboardStore = defineStore('moodboard', () => {
-  const moodboard = ref<Moodboard | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+interface MoodboardState {
+  moodboard: Moodboard | null
+  loading: boolean
+  error: string | null
+  fetchMoodboard: (projectId: string) => Promise<void>
+  uploadMoodboard: (projectId: string, files: File[]) => Promise<Moodboard>
+  updateMoodboard: (id: string, dto: UpdateMoodboardDto) => Promise<Moodboard>
+}
 
-  async function fetchMoodboard(projectId: string) {
-    loading.value = true
-    error.value = null
+export const useMoodboardStore = create<MoodboardState>((set) => ({
+  moodboard: null,
+  loading: false,
+  error: null,
+
+  async fetchMoodboard(projectId: string) {
+    set({ loading: true, error: null })
     try {
-      moodboard.value = await moodboardApi.getByProjectId(projectId)
+      const moodboard = await moodboardApi.getByProjectId(projectId)
+      set({ moodboard, loading: false })
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch moodboard'
-    } finally {
-      loading.value = false
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to fetch moodboard',
+        loading: false,
+      })
     }
-  }
+  },
 
-  async function createMoodboard(dto: CreateMoodboardDto) {
-    const result = await moodboardApi.create(dto)
-    moodboard.value = result
-    return result
-  }
-
-  async function uploadMoodboard(projectId: string, files: File[]) {
+  async uploadMoodboard(projectId: string, files: File[]) {
     const result = await moodboardApi.upload(projectId, files)
-    moodboard.value = result
+    set({ moodboard: result })
     return result
-  }
+  },
 
-  async function updateMoodboard(id: string, dto: UpdateMoodboardDto) {
+  async updateMoodboard(id: string, dto: UpdateMoodboardDto) {
     const result = await moodboardApi.update(id, dto)
-    moodboard.value = result
+    set({ moodboard: result })
     return result
-  }
-
-  return { moodboard, loading, error, fetchMoodboard, createMoodboard, uploadMoodboard, updateMoodboard }
-})
+  },
+}))

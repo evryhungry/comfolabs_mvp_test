@@ -1,21 +1,17 @@
-import { onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
+import { useEffect } from 'react'
 import { usePromptStore } from '../store/usePromptStore'
 
 export function usePrompt(projectId: string) {
-  const store = usePromptStore()
-  const { prompts, templates, loading, error } = storeToRefs(store)
+  const templates = usePromptStore((s) => s.templates)
+  const loading = usePromptStore((s) => s.loading)
+  const error = usePromptStore((s) => s.error)
+  const fetchPrompts = usePromptStore((s) => s.fetchPrompts)
+  const fetchTemplates = usePromptStore((s) => s.fetchTemplates)
 
-  onMounted(() => {
-    store.fetchPrompts(projectId)
-    store.fetchTemplates()
-  })
+  useEffect(() => {
+    fetchPrompts(projectId)
+    fetchTemplates()
+  }, [projectId, fetchPrompts, fetchTemplates])
 
-  return {
-    prompts,
-    templates,
-    loading,
-    error,
-    createPrompt: store.createPrompt,
-  }
+  return { templates, loading, error }
 }

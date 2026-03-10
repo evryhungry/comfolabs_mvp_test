@@ -1,21 +1,17 @@
-import { onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
+import { useEffect } from 'react'
 import { useSketchStore } from '../store/useSketchStore'
 
 export function useSketch(projectId: string) {
-  const store = useSketchStore()
-  const { sketches, loading, error } = storeToRefs(store)
+  const sketches = useSketchStore((s) => s.sketches)
+  const loading = useSketchStore((s) => s.loading)
+  const error = useSketchStore((s) => s.error)
+  const fetchSketches = useSketchStore((s) => s.fetchSketches)
+  const uploadSketch = useSketchStore((s) => s.uploadSketch)
+  const removeSketch = useSketchStore((s) => s.removeSketch)
 
-  onMounted(() => {
-    store.fetchSketches(projectId)
-  })
+  useEffect(() => {
+    fetchSketches(projectId)
+  }, [projectId, fetchSketches])
 
-  return {
-    sketches,
-    loading,
-    error,
-    addSketch: store.addSketch,
-    uploadSketch: store.uploadSketch,
-    removeSketch: store.removeSketch,
-  }
+  return { sketches, loading, error, uploadSketch, removeSketch }
 }

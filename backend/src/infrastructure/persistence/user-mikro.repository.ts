@@ -19,6 +19,10 @@ export class UserMikroRepository implements IUserRepository {
     return this.em.findOne(UserEntity, { email });
   }
 
+  async findByGoogleId(googleId: string): Promise<UserEntity | null> {
+    return this.em.findOne(UserEntity, { googleId });
+  }
+
   async create(data: Partial<UserEntity>): Promise<UserEntity> {
     const user = new UserEntity(data);
     await this.em.persistAndFlush(user);

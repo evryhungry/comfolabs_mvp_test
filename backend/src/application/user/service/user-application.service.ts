@@ -24,8 +24,43 @@ export class UserApplicationService {
     return user;
   }
 
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    return this.userRepository.findByEmail(email);
+  }
+
+  async findByGoogleId(googleId: string): Promise<UserEntity | null> {
+    return this.userRepository.findByGoogleId(googleId);
+  }
+
   async create(dto: CreateUserDto): Promise<UserEntity> {
     return this.userRepository.create({ email: dto.email, name: dto.name });
+  }
+
+  async findOrCreateByGoogle(profile: {
+    googleId: string;
+    email: string;
+    name: string;
+    profileImage?: string;
+  }): Promise<UserEntity> {
+    let user = await this.userRepository.findByGoogleId(profile.googleId);
+    if (user) return user;
+
+    user = await this.userRepository.findByEmail(profile.email);
+    if (user) {
+      return this.userRepository.update(user.id, {
+        googleId: profile.googleId,
+        provider: 'google',
+        profileImage: profile.profileImage,
+      });
+    }
+
+    return this.userRepository.create({
+      email: profile.email,
+      name: profile.name,
+      googleId: profile.googleId,
+      provider: 'google',
+      profileImage: profile.profileImage,
+    });
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<UserEntity> {

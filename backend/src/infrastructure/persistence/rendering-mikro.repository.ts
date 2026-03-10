@@ -16,8 +16,9 @@ export class RenderingMikroRepository implements IRenderingRepository {
   }
 
   async findStuck(thresholdMs: number): Promise<RenderingEntity[]> {
+    const fork = this.em.fork();
     const cutoff = new Date(Date.now() - thresholdMs);
-    return this.em.find(RenderingEntity, {
+    return fork.find(RenderingEntity, {
       status: { $in: [RenderingStatus.PENDING, RenderingStatus.PROCESSING] },
       updatedAt: { $lt: cutoff },
     });

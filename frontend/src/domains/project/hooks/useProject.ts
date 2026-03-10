@@ -1,31 +1,30 @@
-import { onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
+import { useEffect } from 'react'
 import { useProjectStore } from '../store/useProjectStore'
 
 export function useProjectList(userId?: string) {
-  const store = useProjectStore()
-  const { projects, loading, error } = storeToRefs(store)
+  const projects = useProjectStore((s) => s.projects)
+  const loading = useProjectStore((s) => s.loading)
+  const error = useProjectStore((s) => s.error)
+  const fetchProjects = useProjectStore((s) => s.fetchProjects)
+  const createProject = useProjectStore((s) => s.createProject)
+  const deleteProject = useProjectStore((s) => s.deleteProject)
 
-  onMounted(() => {
-    store.fetchProjects(userId)
-  })
+  useEffect(() => {
+    fetchProjects(userId)
+  }, [userId, fetchProjects])
 
-  return {
-    projects,
-    loading,
-    error,
-    createProject: store.createProject,
-    deleteProject: store.deleteProject,
-  }
+  return { projects, loading, error, createProject, deleteProject }
 }
 
 export function useProjectDetail(projectId: string) {
-  const store = useProjectStore()
-  const { currentProject, loading, error } = storeToRefs(store)
+  const currentProject = useProjectStore((s) => s.currentProject)
+  const loading = useProjectStore((s) => s.loading)
+  const error = useProjectStore((s) => s.error)
+  const fetchProject = useProjectStore((s) => s.fetchProject)
 
-  onMounted(() => {
-    store.fetchProject(projectId)
-  })
+  useEffect(() => {
+    fetchProject(projectId)
+  }, [projectId, fetchProject])
 
   return { currentProject, loading, error }
 }
