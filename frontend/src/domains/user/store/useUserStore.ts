@@ -1,69 +1,81 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import type { User, CreateUserDto } from '../model/User'
 import { userApi } from '../service/userApi'
 import { ApiError } from '../../../shared/api'
 
 const STORAGE_KEY = 'comfolabs_user'
 
-export const useUserStore = defineStore('user', () => {
-  const currentUser = ref<User | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-
-  function loadFromStorage() {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        currentUser.value = JSON.parse(saved)
-      } catch {
-        localStorage.removeItem(STORAGE_KEY)
-      }
+function loadFromStorage(): User | null {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch {
+      localStorage.removeItem(STORAGE_KEY)
     }
   }
+  return null
+}
 
-  async function createUser(dto: CreateUserDto) {
-    loading.value = true
-    error.value = null
+interface UserState {
+  currentUser: User | null
+  loading: boolean
+  error: string | null
+  createUser: (dto: CreateUserDto) => Promise<User>
+  signIn: (email: string) => Promise<User | null>
+  setUser: (user: User) => void
+  logout: () => void
+}
+
+export const useUserStore = create<UserState>((set) => ({
+  currentUser: loadFromStorage(),
+  loading: false,
+  error: null,
+
+  async createUser(dto: CreateUserDto) {
+    set({ loading: true, error: null })
     try {
       const user = await userApi.create(dto)
-      currentUser.value = user
+      set({ currentUser: user, loading: false })
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
       return user
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to create user'
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to create user',
+        loading: false,
+      })
       throw e
-    } finally {
-      loading.value = false
     }
-  }
+  },
 
-  async function signIn(email: string) {
-    loading.value = true
-    error.value = null
+  async signIn(email: string) {
+    set({ loading: true, error: null })
     try {
       const user = await userApi.findByEmail(email)
       if (!user) {
-        error.value = 'No account found with this email'
+        set({ error: 'No account found with this email', loading: false })
         return null
       }
-      currentUser.value = user
+      set({ currentUser: user, loading: false })
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
       return user
     } catch (e) {
-      error.value = e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to sign in'
+      set({
+        error: e instanceof ApiError ? `[${e.errorCode}] ${e.message}` : 'Failed to sign in',
+        loading: false,
+      })
       return null
-    } finally {
-      loading.value = false
     }
-  }
+  },
 
-  function logout() {
-    currentUser.value = null
+  setUser(user: User) {
+    set({ currentUser: user })
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+  },
+
+  logout() {
+    set({ currentUser: null })
     localStorage.removeItem(STORAGE_KEY)
-  }
-
-  loadFromStorage()
-
-  return { currentUser, loading, error, createUser, signIn, logout }
-})
+    window.location.href = '/login'
+  },
+}))
