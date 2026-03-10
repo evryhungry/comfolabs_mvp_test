@@ -1,20 +1,24 @@
-export enum RenderingStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-}
+export const RenderingStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const
 
-export enum ViewType {
-  COMBINED = 'COMBINED',
-  FRONT = 'FRONT',
-  LEFT = 'LEFT',
-  RIGHT = 'RIGHT',
-  BACK = 'BACK',
-  PERSPECTIVE = 'PERSPECTIVE',
-  TOP = 'TOP',
-  BOTTOM = 'BOTTOM',
-}
+export type RenderingStatus = (typeof RenderingStatus)[keyof typeof RenderingStatus]
+
+export const ViewType = {
+  COMBINED: 'COMBINED',
+  FRONT: 'FRONT',
+  LEFT: 'LEFT',
+  RIGHT: 'RIGHT',
+  BACK: 'BACK',
+  PERSPECTIVE: 'PERSPECTIVE',
+  TOP: 'TOP',
+  BOTTOM: 'BOTTOM',
+} as const
+
+export type ViewType = (typeof ViewType)[keyof typeof ViewType]
 
 export interface Rendering {
   id: string

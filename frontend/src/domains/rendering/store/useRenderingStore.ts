@@ -1,8 +1,6 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import type {
   Rendering,
-  CreateRenderingDto,
   ExecuteRenderingRequest,
   EnqueueRenderingResponse,
   RenderingStatusResponse,
@@ -12,125 +10,107 @@ import { renderingApi } from '../service/renderingApi'
 import { ApiError } from '../../../shared/api'
 
 const POLL_INTERVAL_MS = 3000
-const MAX_POLL_ATTEMPTS = 200 // ~10 min max
+const MAX_POLL_ATTEMPTS = 200
 
-export const useRenderingStore = defineStore('rendering', () => {
-  const renderings = ref<Rendering[]>([])
-  const lastEnqueueResponse = ref<EnqueueRenderingResponse | null>(null)
-  const pollingStatus = ref<RenderingStatusResponse | null>(null)
-  const loading = ref(false)
-  const executing = ref(false)
-  const error = ref<string | null>(null)
-  let pollTimer: ReturnType<typeof setTimeout> | null = null
+interface RenderingState {
+  renderings: Rendering[]
+  lastEnqueueResponse: EnqueueRenderingResponse | null
+  pollingStatus: RenderingStatusResponse | null
+  loading: boolean
+  executing: boolean
+  error: string | null
+  _pollTimer: ReturnType<typeof setTimeout> | null
+  fetchRenderings: (projectId: string) => Promise<void>
+  executeRendering: (request: ExecuteRenderingRequest) => Promise<EnqueueRenderingResponse | undefined>
+  stopPolling: () => void
+}
 
-  async function fetchRenderings(projectId: string) {
-    loading.value = true
-    error.value = null
+export const useRenderingStore = create<RenderingState>((set, get) => ({
+  renderings: [],
+  lastEnqueueResponse: null,
+  pollingStatus: null,
+  loading: false,
+  executing: false,
+  error: null,
+  _pollTimer: null,
+
+  async fetchRenderings(projectId: string) {
+    set({ loading: true, error: null })
     try {
-      renderings.value = await renderingApi.getByProjectId(projectId)
-    } catch (e) {
-      error.value = 'Failed to fetch renderings'
-    } finally {
-      loading.value = false
+      const renderings = await renderingApi.getByProjectId(projectId)
+      set({ renderings, loading: false })
+    } catch {
+      set({ error: 'Failed to fetch renderings', loading: false })
     }
-  }
+  },
 
-  async function createRendering(dto: CreateRenderingDto) {
-    const rendering = await renderingApi.create(dto)
-    renderings.value.unshift(rendering)
-    return rendering
-  }
-
-  async function executeRendering(request: ExecuteRenderingRequest) {
-    executing.value = true
-    error.value = null
-    pollingStatus.value = null
+  async executeRendering(request: ExecuteRenderingRequest) {
+    set({ executing: true, error: null, pollingStatus: null })
 
     try {
       const enqueueResult = await renderingApi.execute(request)
-      lastEnqueueResponse.value = enqueueResult
+      set({ lastEnqueueResponse: enqueueResult })
 
-      // Refresh list to show new PENDING rendering
-      await fetchRenderings(request.projectId)
+      // Refresh list
+      const renderings = await renderingApi.getByProjectId(request.projectId)
+      set({ renderings })
 
-      // Start polling for completion
-      await pollUntilDone(enqueueResult.renderingId, request.projectId)
+      // Poll until done
+      const { stopPolling } = get()
+      stopPolling()
 
+      for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, POLL_INTERVAL_MS)
+          set({ _pollTimer: timer })
+        })
+
+        try {
+          const status = await renderingApi.getStatus(enqueueResult.renderingId)
+          set({ pollingStatus: status })
+
+          // Update in list
+          const currentRenderings = get().renderings
+          const idx = currentRenderings.findIndex((r) => r.id === enqueueResult.renderingId)
+          if (idx !== -1) {
+            const updated = [...currentRenderings]
+            updated[idx] = {
+              ...updated[idx]!,
+              status: status.status,
+              resultUrl: status.resultUrl ?? undefined,
+              errorMessage: status.errorMessage ?? undefined,
+              updatedAt: status.updatedAt,
+            }
+            set({ renderings: updated })
+          }
+
+          if (status.status === RenderingStatus.COMPLETED || status.status === RenderingStatus.FAILED) {
+            const final = await renderingApi.getByProjectId(request.projectId)
+            set({ renderings: final, executing: false })
+            return enqueueResult
+          }
+        } catch {
+          // continue polling
+        }
+      }
+
+      set({ error: 'Rendering timed out. Check the results later.', executing: false })
       return enqueueResult
     } catch (e) {
       if (e instanceof ApiError) {
-        error.value = `[${e.errorCode}] ${e.message}`
+        set({ error: `[${e.errorCode}] ${e.message}`, executing: false })
       } else {
-        error.value = e instanceof Error ? e.message : 'Failed to execute rendering'
+        set({ error: e instanceof Error ? e.message : 'Failed to execute rendering', executing: false })
       }
       throw e
-    } finally {
-      executing.value = false
     }
-  }
+  },
 
-  async function pollUntilDone(renderingId: string, projectId: string): Promise<void> {
-    stopPolling()
-
-    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-      await sleep(POLL_INTERVAL_MS)
-
-      try {
-        const status = await renderingApi.getStatus(renderingId)
-        pollingStatus.value = status
-
-        // Update the rendering in the local list
-        updateRenderingInList(renderingId, status)
-
-        if (status.status === RenderingStatus.COMPLETED || status.status === RenderingStatus.FAILED) {
-          // Final refresh to get full entity
-          await fetchRenderings(projectId)
-          return
-        }
-      } catch {
-        // Polling error — continue trying
-      }
+  stopPolling() {
+    const timer = get()._pollTimer
+    if (timer) {
+      clearTimeout(timer)
+      set({ _pollTimer: null })
     }
-
-    error.value = 'Rendering timed out. Check the results later.'
-  }
-
-  function updateRenderingInList(renderingId: string, status: RenderingStatusResponse) {
-    const idx = renderings.value.findIndex((r) => r.id === renderingId)
-    if (idx !== -1) {
-      renderings.value[idx] = {
-        ...renderings.value[idx],
-        status: status.status,
-        resultUrl: status.resultUrl ?? undefined,
-        errorMessage: status.errorMessage ?? undefined,
-        updatedAt: status.updatedAt,
-      }
-    }
-  }
-
-  function stopPolling() {
-    if (pollTimer) {
-      clearTimeout(pollTimer)
-      pollTimer = null
-    }
-  }
-
-  function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => {
-      pollTimer = setTimeout(resolve, ms)
-    })
-  }
-
-  return {
-    renderings,
-    lastEnqueueResponse,
-    pollingStatus,
-    loading,
-    executing,
-    error,
-    fetchRenderings,
-    createRendering,
-    executeRendering,
-    stopPolling,
-  }
-})
+  },
+}))
