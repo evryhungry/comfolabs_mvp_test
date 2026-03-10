@@ -13,6 +13,15 @@ export class UserEntity {
   @Property()
   name: string;
 
+  @Property({ nullable: true })
+  provider?: string;
+
+  @Property({ nullable: true })
+  googleId?: string;
+
+  @Property({ nullable: true })
+  profileImage?: string;
+
   @Property({ fieldName: 'createdAt', onCreate: () => new Date() })
   createdAt: Date = new Date();
 
